@@ -1,0 +1,13 @@
+OpenUSD usdview icon
+
+Source:
+PixarAnimationStudios/OpenUSD
+pxr/usdImaging/usdviewq/icons/usdview-blue.svg
+Commit: 51d25eab122ad96db1fd96b7a086d83f1fb338e8
+
+Universal Scene Description
+Copyright 2016 Pixar
+All rights reserved.
+
+This product includes software developed at:
+Pixar (http://www.pixar.com/).

@@ -1,0 +1,147 @@
+name: Windows portable release
+
+on:
+  workflow_dispatch:
+    inputs:
+      usd_optimize_release_tag:
+        description: "NVIDIA usd-optimize release tag"
+        required: true
+        default: "v1.1.0"
+        type: string
+      usd_optimize_asset_pattern:
+        description: "Windows CPython 3.12 release asset pattern"
+        required: true
+        default: "*usd_25.11_py_3.12@*.windows-x86_64.release.zip"
+        type: string
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  USD_OPTIMIZE_RELEASE_TAG: ${{ inputs.usd_optimize_release_tag || 'v1.1.0' }}
+  USD_OPTIMIZE_ASSET_PATTERN: ${{ inputs.usd_optimize_asset_pattern || '*usd_25.11_py_3.12@*.windows-x86_64.release.zip' }}
+
+jobs:
+  package:
+    name: Build portable Windows artifact
+    runs-on: windows-2022
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up CPython 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Install development dependencies
+        run: uv sync --locked
+
+      - name: Run source checks
+        run: |
+          uv run ruff check src tests tools/build_windows_portable.py
+          uv run pytest
+
+      - name: Restore NVIDIA runtime cache
+        uses: actions/cache@v5
+        with:
+          path: ${{ runner.temp }}\usd-optimize-release
+          key: usd-optimize-${{ runner.os }}-${{ env.USD_OPTIMIZE_RELEASE_TAG }}-usd25.11-py3.12
+
+      - name: Download NVIDIA usd-optimize runtime
+        id: runtime
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $downloadDirectory = Join-Path $env:RUNNER_TEMP "usd-optimize-release"
+          New-Item -ItemType Directory -Force -Path $downloadDirectory | Out-Null
+          $archives = @(Get-ChildItem -LiteralPath $downloadDirectory -Filter "*.zip" -File)
+          if ($archives.Count -eq 0) {
+            gh release download "$env:USD_OPTIMIZE_RELEASE_TAG" `
+              --repo NVIDIA-Omniverse/usd-optimize `
+              --pattern "$env:USD_OPTIMIZE_ASSET_PATTERN" `
+              --dir $downloadDirectory
+            $archives = @(Get-ChildItem -LiteralPath $downloadDirectory -Filter "*.zip" -File)
+          }
+          if ($archives.Count -ne 1) {
+            throw "Expected exactly one NVIDIA runtime archive, found $($archives.Count)."
+          }
+          $licenseResponse = gh api "repos/NVIDIA-Omniverse/usd-optimize/contents/LICENSE?ref=$env:USD_OPTIMIZE_RELEASE_TAG" | ConvertFrom-Json
+          $licenseBytes = [Convert]::FromBase64String(($licenseResponse.content -replace "`n", ""))
+          $licensePath = Join-Path $downloadDirectory "LICENSE"
+          [IO.File]::WriteAllBytes($licensePath, $licenseBytes)
+          "archive=$($archives[0].FullName)" >> $env:GITHUB_OUTPUT
+          "license=$licensePath" >> $env:GITHUB_OUTPUT
+          "NVIDIA runtime download: $([math]::Round($archives[0].Length / 1MB, 2)) MiB"
+
+      - name: Build and smoke-test portable artifact
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          uv run python tools/build_windows_portable.py `
+            --runtime-archive "${{ steps.runtime.outputs.archive }}" `
+            --python-root "$env:pythonLocation" `
+            --output-dir dist `
+            --usd-optimize-version "$($env:USD_OPTIMIZE_RELEASE_TAG.TrimStart('v'))" `
+            --usd-optimize-license "${{ steps.runtime.outputs.license }}" `
+            --smoke-input tests/fixtures/teapot/teapot.usd
+
+      - name: Report artifact sizes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Get-ChildItem -LiteralPath dist -File | ForEach-Object {
+            "{0}: {1:N2} MiB" -f $_.Name, ($_.Length / 1MB)
+          }
+          $portableDirectory = Get-ChildItem -LiteralPath dist -Directory | Select-Object -First 1
+          $expandedBytes = (Get-ChildItem -LiteralPath $portableDirectory.FullName -Recurse -File | Measure-Object Length -Sum).Sum
+          "Expanded artifact: {0:N2} MiB" -f ($expandedBytes / 1MB)
+          "Portable component sizes:"
+          Get-ChildItem -LiteralPath $portableDirectory.FullName | ForEach-Object {
+            $componentBytes = if ($_.PSIsContainer) {
+              (Get-ChildItem -LiteralPath $_.FullName -Recurse -File | Measure-Object Length -Sum).Sum
+            } else {
+              $_.Length
+            }
+            "  {0}: {1:N2} MiB" -f $_.Name, ($componentBytes / 1MB)
+          }
+          "Largest packaged Python entries:"
+          Get-ChildItem -LiteralPath (Join-Path $portableDirectory.FullName "python") -Recurse -File |
+            Sort-Object Length -Descending |
+            Select-Object -First 20 |
+            ForEach-Object {
+              $relativePath = $_.FullName.Substring($portableDirectory.FullName.Length + 1)
+              "  {0}: {1:N2} MiB" -f $relativePath, ($_.Length / 1MB)
+            }
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: usd-optimize-app-windows-portable
+          path: |
+            dist/*.zip
+            dist/*.sha256
+            dist/*/manifest.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Attach files to tagged GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            dist/*.zip
+            dist/*.sha256
+          generate_release_notes: true

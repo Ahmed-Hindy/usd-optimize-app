@@ -1,0 +1,37 @@
+[project]
+name = "usd-optimize-app"
+version = "0.1.3"
+description = "Standalone CLI and PySide6 GUI wrapper for NVIDIA usd-optimize."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pyside6-essentials>=6.6",
+]
+
+[project.scripts]
+usdopt = "usd_optimize_app.cli:main"
+usdopt-gui = "usd_optimize_app.gui.app:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.6.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["B", "C4", "E", "F", "I", "N", "UP", "W"]
+ignore = ["UP045"]
+
+[tool.ruff.format]
+docstring-code-format = true

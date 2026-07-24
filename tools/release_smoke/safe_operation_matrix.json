@@ -1,0 +1,11 @@
+{
+  "description": "Conservative operations for external Windows release package smoke coverage.",
+  "operations": [
+    {"name": "print_stats", "commands": [{"operation": "printStats"}], "preserve_prim_count": true},
+    {"name": "compute_extents", "commands": [{"operation": "computeExtents"}], "preserve_prim_count": true},
+    {"name": "optimize_primvars_index_simplify", "commands": [{"operation": "optimizePrimvars", "mode": 1, "simplify": true, "removeIfBound": false}], "preserve_prim_count": true},
+    {"name": "optimize_time_samples_lossless", "commands": [{"operation": "optimizeTimeSamples", "removeInterpolated": false, "epsilonD": 0.0, "epsilonF": 0.0}], "preserve_prim_count": true},
+    {"name": "remove_unused_uvs_block", "commands": [{"operation": "removeUnusedUVs", "mode": 1}], "preserve_prim_count": true},
+    {"name": "generate_normals_standard", "commands": [{"operation": "generateNormals", "sharpnessAngle": 60.0}], "preserve_prim_count": true}
+  ]
+}

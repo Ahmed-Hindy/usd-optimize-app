@@ -1,0 +1,31 @@
+{
+  "name": "safe_publish",
+  "display_name": "Safe Cleanup",
+  "risk": "safe",
+  "audience": "user",
+  "description": "Conservative cleanup that preserves hierarchy and topology while reducing redundant bounds, primvar, material, and time-sample data.",
+  "operations": [
+    {
+      "operation": "executionContext",
+      "verbose": true
+    },
+    {
+      "operation": "computeExtents"
+    },
+    {
+      "operation": "optimizePrimvars",
+      "mode": 1,
+      "simplify": true,
+      "removeIfBound": false
+    },
+    {
+      "operation": "optimizeMaterials"
+    },
+    {
+      "operation": "optimizeTimeSamples",
+      "removeInterpolated": false,
+      "epsilonD": 0.0,
+      "epsilonF": 0.0
+    }
+  ]
+}

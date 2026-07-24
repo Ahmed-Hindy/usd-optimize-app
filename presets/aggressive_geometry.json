@@ -1,0 +1,25 @@
+{
+  "name": "aggressive_geometry",
+  "display_name": "Developer: Destructive Geometry Stress",
+  "risk": "destructive",
+  "audience": "developer",
+  "description": "Developer stress preset for destructive geometry operations on disposable copies.",
+  "operations": [
+    {
+      "operation": "executionContext",
+      "verbose": true
+    },
+    {
+      "operation": "deduplicateGeometry"
+    },
+    {
+      "operation": "merge"
+    },
+    {
+      "operation": "flattenHierarchy"
+    },
+    {
+      "operation": "decimateMeshes"
+    }
+  ]
+}

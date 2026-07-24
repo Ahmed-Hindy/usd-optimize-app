@@ -1,0 +1,37 @@
+{
+  "name": "review_light",
+  "display_name": "Developer: Prototype Rewrite Test",
+  "risk": "review",
+  "audience": "developer",
+  "description": "Developer validation preset for geometry deduplication and prototype rewriting.",
+  "operations": [
+    {
+      "operation": "executionContext",
+      "verbose": true
+    },
+    {
+      "operation": "computeExtents"
+    },
+    {
+      "operation": "optimizePrimvars",
+      "mode": 1,
+      "simplify": true,
+      "removeIfBound": false
+    },
+    {
+      "operation": "optimizeMaterials"
+    },
+    {
+      "operation": "deduplicateGeometry",
+      "tolerance": 0.001,
+      "duplicateMethod": 2,
+      "fuzzy": false,
+      "allowScaling": false
+    },
+    {
+      "operation": "organizePrototypes",
+      "prototypesNamespace": "/Prototypes",
+      "hierarchyLevels": 0
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "name": "animated_asset",
+  "display_name": "Developer: Animated Cleanup Comparison",
+  "risk": "safe",
+  "audience": "developer",
+  "description": "Legacy comparison preset retained for developer regression checks.",
+  "operations": [
+    {
+      "operation": "executionContext",
+      "verbose": true
+    },
+    {
+      "operation": "computeExtents"
+    },
+    {
+      "operation": "optimizePrimvars",
+      "mode": 1,
+      "simplify": true,
+      "removeIfBound": false
+    },
+    {
+      "operation": "optimizeMaterials"
+    },
+    {
+      "operation": "optimizeTimeSamples",
+      "removeInterpolated": false,
+      "epsilonD": 0.0,
+      "epsilonF": 0.0
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "diagnostics",
+  "display_name": "Inspect Stage",
+  "risk": "diagnostic",
+  "audience": "user",
+  "description": "Collects stage statistics without writing a USD derivative.",
+  "operations": [
+    {
+      "operation": "executionContext",
+      "verbose": true
+    },
+    {
+      "operation": "printStats"
+    }
+  ]
+}

@@ -1,0 +1,110 @@
+name: Windows release package smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Upstream release tag to test"
+        required: true
+        default: "v1.1.0"
+        type: string
+      asset_pattern:
+        description: "Exactly one Windows CPython 3.12 release asset pattern"
+        required: true
+        default: "*usd_25.11_py_3.12@*.windows-x86_64.release.zip"
+        type: string
+      run_external_matrix:
+        description: "Run 42 conservative operations on checksum-pinned external USD assets"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Windows package smoke (${{ inputs.release_tag }})
+    runs-on: windows-2022
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out smoke harness
+        uses: actions/checkout@v6
+
+      - name: Set up CPython 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Download upstream Windows package
+        id: package
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $downloadDirectory = Join-Path $env:RUNNER_TEMP "usd-optimize-release"
+          New-Item -ItemType Directory -Force -Path $downloadDirectory | Out-Null
+          gh release download "${{ inputs.release_tag }}" `
+            --repo NVIDIA-Omniverse/usd-optimize `
+            --pattern "${{ inputs.asset_pattern }}" `
+            --dir $downloadDirectory
+          $archives = Get-ChildItem -LiteralPath $downloadDirectory -Filter "*.zip" -File
+          if ($archives.Count -ne 1) {
+            throw "Expected exactly one release package, found $($archives.Count)."
+          }
+          "archive=$($archives[0].FullName)" >> $env:GITHUB_OUTPUT
+
+      - name: Restore external USD asset cache
+        if: ${{ inputs.run_external_matrix }}
+        uses: actions/cache@v5
+        with:
+          path: ${{ runner.temp }}\usd-optimize-external-assets
+          key: usd-optimize-release-smoke-assets-${{ hashFiles('tools/release_smoke/external_usd_assets.json') }}
+
+      - name: Download external USD assets
+        if: ${{ inputs.run_external_matrix }}
+        shell: pwsh
+        env:
+          EXTERNAL_ASSETS_DIR: ${{ runner.temp }}\usd-optimize-external-assets
+        run: |
+          $ErrorActionPreference = "Stop"
+          python tools/release_smoke/download_external_assets.py `
+            --manifest tools/release_smoke/external_usd_assets.json `
+            --assets-dir "$env:EXTERNAL_ASSETS_DIR"
+
+      - name: Smoke-test the released package
+        shell: pwsh
+        env:
+          EXTERNAL_ASSETS_DIR: ${{ runner.temp }}\usd-optimize-external-assets
+        run: |
+          $ErrorActionPreference = "Stop"
+          $arguments = @(
+            "tools/release_smoke/windows_package_smoke.py",
+            "--package-archive", "${{ steps.package.outputs.archive }}",
+            "--overlap-fixture-usd", "tests/fixtures/mcusd/McUsd.usda",
+            "--expected-suppressed-overlaps", "0",
+            "--expected-overlapping-mesh-count", "22"
+          )
+          if ("${{ inputs.run_external_matrix }}" -eq "true") {
+            $arguments += @(
+              "--external-asset-manifest", "tools/release_smoke/external_usd_assets.json",
+              "--external-assets-dir", "$env:EXTERNAL_ASSETS_DIR",
+              "--external-operation-matrix", "tools/release_smoke/safe_operation_matrix.json"
+            )
+          }
+          & python @arguments 2>&1 |
+            Tee-Object -FilePath release-package-smoke.log
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+      - name: Upload smoke log
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-release-package-smoke-${{ inputs.release_tag }}
+          path: release-package-smoke.log
+          if-no-files-found: warn
+          retention-days: 14
