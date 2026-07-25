@@ -3,7 +3,7 @@
   "display_name": "Geometry Optimization",
   "risk": "safe",
   "audience": "user",
-  "description": "Recomputes extents and optimizes primvar storage without changing hierarchy or topology.",
+  "description": "Recalculates bounds and reduces primvar storage without changing hierarchy or topology.",
   "operations": [
     {
       "operation": "executionContext",

@@ -118,7 +118,7 @@ class MainWindow(QMainWindow):
         self._input_edit.setPlaceholderText("Choose a USD file")
         self._input_edit.setToolTip("Enter a local .usd, .usda, or .usdc path.")
         self._output_edit = QLineEdit()
-        self._output_edit.setPlaceholderText("A separate optimized copy is suggested automatically")
+        self._output_edit.setPlaceholderText("Output path is based on the source file")
         self._workflow_combo = NoWheelComboBox()
         self._configure_expanding_combo(self._workflow_combo)
         self._description_label = self._create_wrapped_label()
@@ -136,7 +136,7 @@ class MainWindow(QMainWindow):
         )
         self._scene_summary_label.setObjectName("SectionHint")
         self._scene_scope_label = self._create_wrapped_label(
-            "Scope: Entire stage · select one or more prims to limit the workflow."
+            "Scope: Entire stage. Select prims to limit the operation."
         )
         self._scene_scope_label.setObjectName("SectionHint")
         self._clear_scope_button = QPushButton("Clear selection")
@@ -145,10 +145,10 @@ class MainWindow(QMainWindow):
         self._scene_tree = QTreeWidget()
         configure_scene_tree(self._scene_tree)
         self._scene_tree.itemSelectionChanged.connect(self._update_scene_scope)
-        self._log_edit = self._create_read_only_text("Run a workflow to see worker messages.")
+        self._log_edit = self._create_read_only_text("Run an operation to view its log.")
         configure_log_view(self._log_edit)
         self._analysis_edit = self._create_read_only_text(
-            "Run Find Overlaps to see structured findings."
+            "Run Find Overlaps to view affected meshes."
         )
         self._diagnostics_summary_label = self._create_wrapped_label(
             "Choose an input USD to inspect stage statistics."
@@ -266,8 +266,8 @@ class MainWindow(QMainWindow):
         layout.setSpacing(14)
         layout.addLayout(
             self._build_section_heading(
-                "Build a clean derivative",
-                "Select a stage and run one of the reviewed USD workflows.",
+                "Create an optimized USD copy",
+                "Choose a USD file, then select an operation.",
             )
         )
         layout.addWidget(self._build_file_group())
@@ -376,8 +376,8 @@ class MainWindow(QMainWindow):
         layout.setSpacing(12)
         layout.addLayout(
             self._build_section_heading(
-                "Stage inspector",
-                "Check the hierarchy, diagnostics, and results without leaving the app.",
+                "Stage details",
+                "View hierarchy, diagnostics, and run results.",
             )
         )
 
@@ -635,7 +635,7 @@ class MainWindow(QMainWindow):
         paths = selected_prim_paths(self._scene_tree)
         preset = self._current_preset()
         if not paths:
-            message = "Scope: Entire stage · select one or more prims to limit the workflow."
+            message = "Scope: Entire stage. Select prims to limit the operation."
         elif len(paths) == 1:
             message = f"Scope: {paths[0]} and all descendants"
         else:

@@ -3,7 +3,7 @@
   "display_name": "Safe Cleanup",
   "risk": "safe",
   "audience": "user",
-  "description": "Conservative cleanup that preserves hierarchy and topology while reducing redundant bounds, primvar, material, and time-sample data.",
+  "description": "Removes redundant bounds, primvar, material, and time-sample data without changing hierarchy or topology.",
   "operations": [
     {
       "operation": "executionContext",

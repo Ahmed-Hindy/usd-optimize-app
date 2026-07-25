@@ -3,7 +3,7 @@
   "display_name": "Find Overlaps",
   "risk": "diagnostic",
   "audience": "user",
-  "description": "Finds intersecting mesh islands on the CPU without changing the source USD.",
+  "description": "Reports intersecting mesh islands. Does not modify the USD.",
   "operations": [
     {
       "operation": "executionContext",
