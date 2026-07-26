@@ -851,6 +851,7 @@ class MainWindow(QMainWindow):
         self._job_outcome = ("Optimized copy completed", "success")
         self._set_status(*self._job_outcome)
         self._tabs.setCurrentWidget(self._log_edit)
+        self._show_conversion_complete(result)
 
     def _show_diagnostics(self, result: OptimizeResult) -> None:
         """Render structured results from a user-triggered analysis workflow."""
@@ -1013,3 +1014,13 @@ class MainWindow(QMainWindow):
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "USD Optimize App", message)
+
+    def _show_conversion_complete(self, result: OptimizeResult) -> None:
+        """Show the saved USD path when a conversion finishes."""
+        QMessageBox.information(
+            self,
+            "Conversion complete",
+            "New USD Scene saved to:\n\n"
+            f"'{result.output_path}'\n\n"
+            f"Completed in {result.duration_seconds:.1f}s.",
+        )

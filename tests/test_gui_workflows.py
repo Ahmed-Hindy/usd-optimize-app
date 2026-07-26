@@ -194,7 +194,11 @@ def test_analysis_results_are_shown_in_analysis_tab(window: MainWindow, tmp_path
     assert "{" not in analysis_text
 
 
-def test_completion_status_survives_thread_cleanup(window: MainWindow, tmp_path: Path) -> None:
+def test_completion_status_survives_thread_cleanup(
+    window: MainWindow,
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
     result = OptimizeResult(
         input_path=tmp_path / "input.usda",
         output_path=tmp_path / "output.usda",
@@ -203,11 +207,43 @@ def test_completion_status_survives_thread_cleanup(window: MainWindow, tmp_path:
         duration_seconds=0.1,
         operations=["computeExtents"],
     )
+    monkeypatch.setattr(main_window.QMessageBox, "information", lambda *args: None)
 
     window._on_job_succeeded(result)
     window._on_thread_finished()
 
     assert window._status_message_label.text() == "● Optimized copy completed"
+
+
+def test_successful_conversion_shows_saved_output_popup(
+    window: MainWindow,
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    result = OptimizeResult(
+        input_path=tmp_path / "input.usda",
+        output_path=tmp_path / "output.usda",
+        preset_name="safe_publish",
+        success=True,
+        duration_seconds=1.25,
+        operations=["computeExtents"],
+    )
+    captured_popup = []
+    monkeypatch.setattr(
+        main_window.QMessageBox,
+        "information",
+        lambda *args: captured_popup.append(args),
+    )
+
+    window._on_job_succeeded(result)
+
+    assert captured_popup == [
+        (
+            window,
+            "Conversion complete",
+            f"New USD Scene saved to:\n\n'{result.output_path}'\n\nCompleted in 1.2s.",
+        )
+    ]
 
 
 def test_cancellation_is_not_shown_as_an_error(window: MainWindow, monkeypatch) -> None:
