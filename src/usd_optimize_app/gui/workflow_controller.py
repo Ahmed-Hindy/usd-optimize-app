@@ -76,8 +76,6 @@ class WorkflowController(QObject):
         self._setting_auto_output = False
         self._run_started_at: float | None = None
         self._job_outcome: tuple[str, str] | None = None
-        self._latest_outcome: tuple[str, str] | None = None
-        self._latest_action: tuple[str, str] | None = None
         self._elapsed_timer = QTimer(self)
         self._elapsed_timer.setInterval(1000)
         self._elapsed_timer.timeout.connect(self._update_elapsed_status)
@@ -188,15 +186,6 @@ class WorkflowController(QObject):
             return
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder.resolve())))
 
-    def open_overview_target(self, target: str) -> None:
-        """Navigate from Overview to its relevant result drill-down."""
-        if target == "analysis":
-            self._results_panel.show_analysis()
-        elif target == "diagnostics":
-            self._results_panel.show_diagnostics()
-        elif target == "log":
-            self._results_panel.show_log()
-
     def shutdown(self, timeout_ms: int = THREAD_SHUTDOWN_TIMEOUT_MS) -> bool:
         """Cancel jobs and inspection work before Qt destroys its objects."""
         if self._active_job is not None and self._active_job.isRunning():
@@ -218,7 +207,6 @@ class WorkflowController(QObject):
         self._workflow_panel.cancel_requested.connect(self.cancel_job)
         self._workflow_panel.open_output_requested.connect(self.open_output_folder)
         self._results_panel.scope_changed.connect(self.handle_scope_changed)
-        self._results_panel.overview_action_requested.connect(self.open_overview_target)
 
     def _load_saved_paths(self) -> None:
         saved_paths = self._preferences.load_paths()
@@ -253,10 +241,11 @@ class WorkflowController(QObject):
     def _on_input_inspected(self, inspection: InputInspection) -> None:
         if inspection.is_valid:
             self._show_scene_inspection(inspection)
+            self._results_panel.show_scene()
         else:
             self._clear_scene_view(inspection.message)
+            self._results_panel.show_overview()
         self._refresh_presentation()
-        self._results_panel.show_overview()
 
     def _on_input_diagnostics_completed(self, result: OptimizeResult) -> None:
         self._render_stage_diagnostics(result)
@@ -384,7 +373,6 @@ class WorkflowController(QObject):
         )
 
     def _refresh_overview(self, preset: PresetView | None, paths: tuple[str, ...]) -> None:
-        inspection = self._inspection_controller.scene_result
         stage = self._results_panel.scene_summary_label.text()
         scope = (
             "Entire stage"
@@ -392,27 +380,11 @@ class WorkflowController(QObject):
             else (paths[0] if len(paths) == 1 else f"{len(paths)} selected prim roots")
         )
         workflow = preset.display_name if preset is not None else "Choose a workflow"
-        outcome = "No workflow has run for this stage."
-        action_label = ""
-        action_target = ""
-        if self._latest_outcome is not None:
-            outcome = self._latest_outcome[0]
-            action_label, action_target = self._latest_action or ("View log", "log")
-        elif self._active_job is not None:
-            outcome = "Workflow running. Open Log to follow worker output."
-            action_label, action_target = "View log", "log"
-        elif inspection is None and self._workflow_panel.input_path:
-            outcome = "Inspecting the selected USD stage."
-        elif inspection is not None and not inspection.is_valid:
-            outcome = inspection.message
         self._results_panel.set_overview(
             OverviewState(
                 stage=stage,
                 scope=scope,
                 workflow=workflow,
-                outcome=outcome,
-                action_label=action_label,
-                action_target=action_target,
             )
         )
 
@@ -485,8 +457,6 @@ class WorkflowController(QObject):
         self._active_job = OptimizeJobThread(settings)
         self._run_started_at = monotonic()
         self._job_outcome = None
-        self._latest_outcome = None
-        self._latest_action = None
         self._active_job.output_received.connect(
             lambda text: append_log_text(self._results_panel.log_edit, text)
         )
@@ -496,7 +466,7 @@ class WorkflowController(QObject):
         self._active_job.finished.connect(self._active_job.deleteLater)
         self._elapsed_timer.start()
         self._refresh_presentation()
-        self._results_panel.show_overview()
+        self._results_panel.show_overview(expand=True)
         self._set_status("Workflow running…", "info")
         self._active_job.start()
 
@@ -506,34 +476,27 @@ class WorkflowController(QObject):
             self._show_diagnostics(result)
             return
         self._job_outcome = ("Optimized copy completed", "success")
-        self._latest_outcome = self._job_outcome
-        self._latest_action = ("View log", "log")
         self._show_completion(result)
-        self._results_panel.show_overview()
+        self._results_panel.show_overview(expand=True)
         self._refresh_presentation()
 
     def _show_diagnostics(self, result: OptimizeResult) -> None:
         stats = parse_stage_stats(result.worker_output)
-        action_label, action_target = "View log", "log"
         if stats:
             self._render_stage_diagnostics(result)
-            action_label, action_target = "View diagnostics", "diagnostics"
         if result.operation_results:
             self._results_panel.analysis_edit.setPlainText(
                 format_analysis_results(result.operation_results)
             )
             self._results_panel.set_analysis_visible(True)
-            action_label, action_target = "View analysis", "analysis"
             completion_message = "Analysis complete"
         elif stats:
             completion_message = "Diagnostics complete"
         else:
             completion_message = "Workflow complete"
         self._job_outcome = (completion_message, "success")
-        self._latest_outcome = self._job_outcome
-        self._latest_action = (action_label, action_target)
         self._refresh_presentation()
-        self._results_panel.show_overview()
+        self._results_panel.show_overview(expand=True)
 
     def _on_job_failed(self, message: str) -> None:
         if message == "Optimization cancelled.":
@@ -543,11 +506,9 @@ class WorkflowController(QObject):
             append_log_text(self._results_panel.log_edit, f"\nFailed: {message}\n")
             self._job_outcome = ("Workflow failed", "error")
             self._show_error(message)
-        self._latest_outcome = self._job_outcome
-        self._latest_action = ("View log", "log")
         self._refresh_presentation()
         self._set_status(*self._job_outcome)
-        self._results_panel.show_overview()
+        self._results_panel.show_overview(expand=True)
 
     def _on_thread_finished(self) -> None:
         self._elapsed_timer.stop()

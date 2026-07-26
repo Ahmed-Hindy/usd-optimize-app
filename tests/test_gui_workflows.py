@@ -146,13 +146,15 @@ def test_runtime_blocker_replaces_workspace(window: MainWindow) -> None:
     assert "Runtime unavailable for test." in window._runtime_blocker_detail.text()
 
 
-def test_runtime_badge_is_reset_when_runtime_becomes_unavailable(window: MainWindow) -> None:
+def test_runtime_state_hides_status_bar_when_runtime_becomes_unavailable(
+    window: MainWindow,
+) -> None:
     window._set_runtime_state(True, "2 operations available")
     window._set_runtime_state(False, "Runtime disappeared.")
 
-    assert window._runtime_badge.text() == "RUNTIME UNAVAILABLE"
-    assert window._runtime_badge.toolTip() == "Runtime disappeared."
-    assert window._runtime_badge.objectName() == "BadgeError"
+    assert window._content_stack.currentWidget() is window._runtime_blocker
+    assert window.statusBar().isHidden()
+    assert "Runtime disappeared." in window._runtime_blocker_detail.text()
 
 
 def test_analysis_completion_is_summary_led(window: MainWindow, tmp_path: Path) -> None:
@@ -179,11 +181,9 @@ def test_analysis_completion_is_summary_led(window: MainWindow, tmp_path: Path) 
     results = window._results_panel
     assert results.tabs.currentWidget() is results.overview_tab
     assert results.tabs.isTabVisible(results.analysis_tab_index)
-    assert results.overview_action_button.text() == "View analysis"
-    assert results.overview_outcome_value.text() == "Analysis complete"
     controller._on_thread_finished()
     window._set_runtime_state(True, "test runtime")
-    results.overview_action_button.click()
+    results.show_analysis()
     assert "Overlapping Meshes (1)" in results.analysis_edit.toPlainText()
     assert results.tabs.currentWidget() is results.analysis_edit
 
@@ -192,7 +192,6 @@ def test_cancellation_updates_summary_without_error(window: MainWindow) -> None:
     controller = window._controller
     controller._on_job_failed("Optimization cancelled.")
 
-    assert "Workflow cancelled" in window._results_panel.overview_outcome_value.text()
     assert "Workflow cancelled" in window._status_message_label.text()
 
 

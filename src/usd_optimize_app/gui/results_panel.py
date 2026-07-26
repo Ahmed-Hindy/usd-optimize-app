@@ -31,16 +31,12 @@ class OverviewState:
     stage: str = "Choose an input USD to inspect its hierarchy."
     scope: str = "Entire stage"
     workflow: str = "Choose a workflow"
-    outcome: str = "No workflow has run for this stage."
-    action_label: str = ""
-    action_target: str = ""
 
 
 class ResultsPanel(QFrame):
     """Own scene inspection, diagnostics, analysis, log, and result summary views."""
 
     scope_changed = Signal()
-    overview_action_requested = Signal(str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -49,7 +45,6 @@ class ResultsPanel(QFrame):
         self._build_layout()
         self.scene_tree.itemSelectionChanged.connect(self.scope_changed)
         self.clear_scope_button.clicked.connect(self.scene_tree.clearSelection)
-        self.overview_action_button.clicked.connect(self._emit_overview_action)
 
     @property
     def selected_paths(self) -> tuple[str, ...]:
@@ -61,30 +56,41 @@ class ResultsPanel(QFrame):
         self.overview_stage_value.setText(state.stage)
         self.overview_scope_value.setText(state.scope)
         self.overview_workflow_value.setText(state.workflow)
-        self.overview_outcome_value.setText(state.outcome)
-        self.overview_action_button.setText(state.action_label)
-        self._overview_action_target = state.action_target
-        self.overview_action_button.setVisible(bool(state.action_label and state.action_target))
+        self.compact_stage_value.setText(state.stage)
+        self.compact_scope_value.setText(state.scope)
 
-    def show_overview(self) -> None:
+    def show_overview(self, *, expand: bool = False) -> None:
         """Select the summary-led entry point for the results workspace."""
+        if expand:
+            self.set_details_expanded(True)
         self.tabs.setCurrentWidget(self.overview_tab)
 
     def show_scene(self) -> None:
         """Select the hierarchy drill-down."""
+        self.set_details_expanded(True)
         self.tabs.setCurrentWidget(self.scene_tab)
-
-    def show_diagnostics(self) -> None:
-        """Select the diagnostics drill-down."""
-        self.tabs.setCurrentWidget(self.diagnostics_tab)
 
     def show_analysis(self) -> None:
         """Select the structured analysis drill-down."""
+        self.set_details_expanded(True)
         self.tabs.setCurrentWidget(self.analysis_edit)
 
     def show_log(self) -> None:
         """Select the raw worker-log drill-down."""
+        self.set_details_expanded(True)
         self.tabs.setCurrentWidget(self.log_edit)
+
+    def set_details_expanded(self, expanded: bool) -> None:
+        """Keep initial stage review compact until the user needs the inspector."""
+        self._details_expanded = expanded
+        self.compact_summary.setVisible(not expanded)
+        self.tabs.setVisible(expanded)
+        self.heading_title.setText("Stage details" if expanded else "Stage summary")
+        self.heading_hint.setText(
+            "Review the current stage and latest workflow result."
+            if expanded
+            else "Review the loaded stage or open its hierarchy to choose a scope."
+        )
 
     def set_analysis_visible(self, visible: bool) -> None:
         """Show Analysis only after it contains structured findings."""
@@ -120,20 +126,27 @@ class ResultsPanel(QFrame):
         self.overview_stage_value = self._wrapped_label()
         self.overview_scope_value = self._wrapped_label()
         self.overview_workflow_value = self._wrapped_label()
-        self.overview_outcome_value = self._wrapped_label()
-        self.overview_action_button = QPushButton()
-        self.overview_action_button.setVisible(False)
-        self._overview_action_target = ""
+        self.compact_stage_value = self._wrapped_label()
+        self.compact_scope_value = self._wrapped_label()
+        self._details_expanded = False
 
     def _build_layout(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 15, 16, 16)
         layout.setSpacing(12)
-        layout.addLayout(
-            self._section_heading(
-                "Stage details", "Review the current stage and latest workflow result."
-            )
+        heading = self._section_heading(
+            "Stage summary", "Review the loaded stage or open its hierarchy to choose a scope."
         )
+        layout.addLayout(heading)
+
+        self.compact_summary = QWidget()
+        compact_layout = QVBoxLayout(self.compact_summary)
+        compact_layout.setContentsMargins(0, 0, 0, 0)
+        compact_layout.setSpacing(10)
+        compact_layout.addLayout(self._overview_section("STAGE", self.compact_stage_value))
+        compact_layout.addLayout(self._overview_section("SCOPE", self.compact_scope_value))
+        compact_layout.addStretch(1)
+        layout.addWidget(self.compact_summary)
 
         self.overview_tab = QWidget()
         overview_layout = QVBoxLayout(self.overview_tab)
@@ -142,11 +155,11 @@ class ResultsPanel(QFrame):
         overview_layout.addLayout(self._overview_section("STAGE", self.overview_stage_value))
         overview_layout.addLayout(self._overview_section("SCOPE", self.overview_scope_value))
         overview_layout.addLayout(self._overview_section("WORKFLOW", self.overview_workflow_value))
-        overview_layout.addLayout(
-            self._overview_section("LATEST RESULT", self.overview_outcome_value)
-        )
-        overview_layout.addWidget(self.overview_action_button)
-        overview_layout.addStretch(1)
+        statistics_title = QLabel("STAGE STATISTICS")
+        statistics_title.setObjectName("StatusCaption")
+        overview_layout.addWidget(statistics_title)
+        overview_layout.addWidget(self.diagnostics_summary_label)
+        overview_layout.addWidget(self.diagnostic_table, stretch=1)
         self.overview_tab_index = self.tabs.addTab(self.overview_tab, "Overview")
 
         self.scene_tab = QWidget()
@@ -161,12 +174,6 @@ class ResultsPanel(QFrame):
         scene_layout.addWidget(self.scene_tree, stretch=1)
         self.scene_tab_index = self.tabs.addTab(self.scene_tab, "Scene")
 
-        self.diagnostics_tab = QWidget()
-        diagnostics_layout = QVBoxLayout(self.diagnostics_tab)
-        diagnostics_layout.setContentsMargins(0, 0, 0, 0)
-        diagnostics_layout.setSpacing(8)
-        diagnostics_layout.addWidget(self.diagnostics_summary_label)
-        diagnostics_layout.addWidget(self.diagnostic_table, stretch=1)
         self.diagnostic_table.setHorizontalHeaderLabels(
             ("Prim type", "Count", "Inactive", "Invisible")
         )
@@ -175,15 +182,11 @@ class ResultsPanel(QFrame):
             QHeaderView.ResizeMode.ResizeToContents
         )
         self.diagnostic_table.horizontalHeader().setStretchLastSection(True)
-        self.diagnostics_tab_index = self.tabs.addTab(self.diagnostics_tab, "Diagnostics")
         self.analysis_tab_index = self.tabs.addTab(self.analysis_edit, "Analysis")
         self.tabs.setTabVisible(self.analysis_tab_index, False)
         self.tabs.addTab(self.log_edit, "Log")
         layout.addWidget(self.tabs)
-
-    def _emit_overview_action(self) -> None:
-        if self._overview_action_target:
-            self.overview_action_requested.emit(self._overview_action_target)
+        self.set_details_expanded(False)
 
     @staticmethod
     def _read_only_text(placeholder: str) -> QPlainTextEdit:
@@ -199,17 +202,16 @@ class ResultsPanel(QFrame):
         label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         return label
 
-    @staticmethod
-    def _section_heading(title: str, hint: str) -> QVBoxLayout:
+    def _section_heading(self, title: str, hint: str) -> QVBoxLayout:
         layout = QVBoxLayout()
         layout.setSpacing(4)
-        title_label = QLabel(title)
-        title_label.setObjectName("SectionTitle")
-        hint_label = QLabel(hint)
-        hint_label.setObjectName("SectionHint")
-        hint_label.setWordWrap(True)
-        layout.addWidget(title_label)
-        layout.addWidget(hint_label)
+        self.heading_title = QLabel(title)
+        self.heading_title.setObjectName("SectionTitle")
+        self.heading_hint = QLabel(hint)
+        self.heading_hint.setObjectName("SectionHint")
+        self.heading_hint.setWordWrap(True)
+        layout.addWidget(self.heading_title)
+        layout.addWidget(self.heading_hint)
         rule = QFrame()
         rule.setObjectName("SectionRule")
         rule.setFrameShape(QFrame.Shape.HLine)

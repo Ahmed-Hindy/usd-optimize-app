@@ -24,8 +24,8 @@ QWidget {
 
 QLabel#SectionHint, QLabel#StatusCaption { color: #92969b; font-size: 12px; }
 QLabel#SectionTitle { color: #f2eee5; font-size: 17px; font-weight: 650; }
-QLabel#StatusCaption { font-size: 11px; font-weight: 700; color: #b58a57; }
-QLabel#FieldLabel { color: #b58a57; font-size: 10px; font-weight: 700; letter-spacing: 0.8px; }
+QLabel#StatusCaption { font-size: 11px; font-weight: 700; color: #92969b; }
+QLabel#FieldLabel { color: #92969b; font-size: 10px; font-weight: 700; letter-spacing: 0.8px; }
 QLabel#StatusValue { color: #f2eee5; font-weight: 600; }
 QLabel#InlineState { color: #92969b; font-size: 12px; font-weight: 500; }
 QLabel#StatusMessage { font-size: 12px; font-weight: 600; padding-left: 6px; }
@@ -40,7 +40,7 @@ QPushButton {
     color: #d8d3c9; font-weight: 600; padding: 6px 12px; min-height: 20px;
 }
 QPushButton:hover { background-color: #2a2e33; border-color: #777166; color: #f2eee5; }
-QPushButton:pressed { background-color: #343028; }
+QPushButton:pressed { background-color: #34383d; }
 QPushButton:disabled { border-color: #35393e; color: #6f7479; }
 QPushButton#PrimaryButton {
     background-color: #b47b43; border-color: #c38c55; color: #17191c; font-weight: 700;
@@ -56,7 +56,7 @@ QToolButton#OpenOutputButton {
     padding: 5px;
 }
 QToolButton#OpenOutputButton:hover { background-color: #2a2e33; border-color: #777166; }
-QToolButton#OpenOutputButton:pressed { background-color: #343028; }
+QToolButton#OpenOutputButton:pressed { background-color: #34383d; }
 QToolButton#OpenOutputButton:disabled { border-color: #35393e; }
 
 QLineEdit, QComboBox {
@@ -64,7 +64,7 @@ QLineEdit, QComboBox {
     color: #e5e1d8; padding: 6px 10px; min-height: 20px;
 }
 QLineEdit:hover, QComboBox:hover { border-color: #777166; background-color: #1c1f23; }
-QLineEdit:focus, QComboBox:focus { border-color: #c38c55; }
+QLineEdit:focus, QComboBox:focus { border-color: #72a9bd; }
 QComboBox::drop-down { border: none; width: 20px; }
 QComboBox QAbstractItemView, QListView#ComboBoxPopup, QAbstractItemView#ComboBoxPopup {
     background-color: #1e2125; color: #e5e1d8; selection-background-color: #3a3027;
@@ -96,7 +96,7 @@ QTabBar::tab:selected {
 }
 QTabBar::tab:hover:!selected { color: #d8d3c9; background-color: #282c30; }
 QSplitter::handle { background-color: #35393e; }
-QSplitter::handle:hover { background-color: #b47b43; }
+QSplitter::handle:hover { background-color: #5c6267; }
 QSplitter::handle:horizontal { width: 2px; }
 
 QStatusBar {

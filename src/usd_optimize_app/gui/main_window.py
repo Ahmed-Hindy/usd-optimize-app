@@ -76,9 +76,9 @@ class MainWindow(QMainWindow):
         self._workspace_splitter.setChildrenCollapsible(False)
         self._workspace_splitter.addWidget(self._workflow_panel)
         self._workspace_splitter.addWidget(self._results_panel)
-        self._workspace_splitter.setStretchFactor(0, 10)
-        self._workspace_splitter.setStretchFactor(1, 10)
-        self._workspace_splitter.setSizes([590, 530])
+        self._workspace_splitter.setStretchFactor(0, 11)
+        self._workspace_splitter.setStretchFactor(1, 9)
+        self._workspace_splitter.setSizes([590, 490])
 
         self._runtime_blocker_title = QLabel("USD Optimize runtime is unavailable")
         self._runtime_blocker_title.setObjectName("RuntimeBlockerTitle")
@@ -103,12 +103,9 @@ class MainWindow(QMainWindow):
         self._status_message_label.setSizePolicy(
             QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
         )
-        self._runtime_badge = QLabel()
-        self._runtime_badge.setObjectName("BadgeReady")
         status_bar = self.statusBar()
         status_bar.setSizeGripEnabled(False)
         status_bar.addWidget(self._status_message_label, 1)
-        status_bar.addPermanentWidget(self._runtime_badge)
 
     def _build_runtime_blocker(self) -> QFrame:
         panel = QFrame()
@@ -124,16 +121,10 @@ class MainWindow(QMainWindow):
 
     def _set_runtime_state(self, usable: bool, details: str) -> None:
         if usable:
-            self._runtime_badge.setText("RUNTIME READY")
-            self._runtime_badge.setToolTip(details)
-            self._runtime_badge.setObjectName("BadgeReady")
             self._workspace_splitter.setEnabled(True)
             self._content_stack.setCurrentWidget(self._workspace_splitter)
             self.statusBar().setVisible(True)
         else:
-            self._runtime_badge.setText("RUNTIME UNAVAILABLE")
-            self._runtime_badge.setToolTip(details)
-            self._runtime_badge.setObjectName("BadgeError")
             self._runtime_blocker_detail.setText(
                 f"{details}\n\n"
                 "Extract or reinstall the portable USD Optimize package, then reopen the app."
@@ -141,10 +132,6 @@ class MainWindow(QMainWindow):
             self._workspace_splitter.setEnabled(False)
             self._content_stack.setCurrentWidget(self._runtime_blocker)
             self.statusBar().setVisible(False)
-        self._runtime_badge.setStyleSheet("")
-        style = self._runtime_badge.style()
-        style.unpolish(self._runtime_badge)
-        style.polish(self._runtime_badge)
 
     def _set_status(self, message: str, kind: str) -> None:
         color = STATUS_COLOR_BY_KIND.get(kind, STATUS_COLOR_BY_KIND["neutral"])

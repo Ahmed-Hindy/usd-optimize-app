@@ -4,7 +4,6 @@ from pathlib import Path
 
 from usd_optimize_app.backend import InputInspection, SceneGraphNode
 from usd_optimize_app.gui.main_window import MainWindow
-from usd_optimize_app.gui.results_panel import OverviewState
 from usd_optimize_app.models import OptimizeResult
 
 
@@ -36,7 +35,9 @@ def test_scene_inspection_populates_results_and_overview(
 
     _complete_scene_inspection(window, inspection)
 
-    assert results.tabs.currentWidget() is results.overview_tab
+    assert results.tabs.currentWidget() is results.scene_tab
+    assert not results.tabs.isHidden()
+    assert results.compact_summary.isHidden()
     assert "2 prims" in results.scene_summary_label.text()
     assert "2 prims" in results.overview_stage_value.text()
     assert results.scene_tree.topLevelItem(0).child(0).text(0) == "Mesh"
@@ -132,11 +133,10 @@ def test_diagnostics_are_rendered_in_results_panel(window: MainWindow, tmp_path:
     assert "1,236 faces" in results.diagnostics_summary_label.text()
 
 
-def test_overview_action_opens_result_drill_down(window: MainWindow) -> None:
+def test_analysis_tab_opens_result_drill_down(window: MainWindow) -> None:
     results = window._results_panel
     window._set_runtime_state(True, "test runtime")
     results.set_analysis_visible(True)
-    results.set_overview(OverviewState(action_label="View analysis", action_target="analysis"))
-    results.overview_action_button.click()
+    results.show_analysis()
 
     assert results.tabs.currentWidget() is results.analysis_edit

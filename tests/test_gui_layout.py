@@ -35,9 +35,22 @@ def test_panels_own_layout_and_summary_led_tab_order(window: MainWindow) -> None
     assert workflow.output_row.itemAt(2).widget() is workflow.open_output_button
     assert isinstance(workflow.open_output_button, QToolButton)
     assert workflow.open_output_button.accessibleName() == "Open output folder"
-    assert tab_names == ["Overview", "Scene", "Diagnostics", "Analysis", "Log"]
+    assert tab_names == ["Overview", "Scene", "Analysis", "Log"]
     assert results.tabs.currentWidget() is results.overview_tab
+    assert results.tabs.isHidden()
+    assert not results.compact_summary.isHidden()
     assert results.tabs.isTabVisible(results.analysis_tab_index) is False
+    assert results.overview_tab.layout().indexOf(results.diagnostic_table) >= 0
+
+
+def test_scene_inspector_expands_stage_summary(window: MainWindow) -> None:
+    results = window._results_panel
+
+    results.show_scene()
+
+    assert not results.tabs.isHidden()
+    assert results.compact_summary.isHidden()
+    assert results.tabs.currentWidget() is results.scene_tab
 
 
 def test_operation_list_is_read_only(window: MainWindow) -> None:
