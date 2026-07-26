@@ -146,6 +146,15 @@ def test_runtime_blocker_replaces_workspace(window: MainWindow) -> None:
     assert "Runtime unavailable for test." in window._runtime_blocker_detail.text()
 
 
+def test_runtime_badge_is_reset_when_runtime_becomes_unavailable(window: MainWindow) -> None:
+    window._set_runtime_state(True, "2 operations available")
+    window._set_runtime_state(False, "Runtime disappeared.")
+
+    assert window._runtime_badge.text() == "RUNTIME UNAVAILABLE"
+    assert window._runtime_badge.toolTip() == "Runtime disappeared."
+    assert window._runtime_badge.objectName() == "BadgeError"
+
+
 def test_analysis_completion_is_summary_led(window: MainWindow, tmp_path: Path) -> None:
     result = OptimizeResult(
         input_path=tmp_path / "input.usda",
@@ -163,13 +172,16 @@ def test_analysis_completion_is_summary_led(window: MainWindow, tmp_path: Path) 
         ],
     )
 
-    window._controller._show_diagnostics(result)
-    window._controller._on_thread_finished()
+    controller = window._controller
+    controller._active_job = object()
+    controller._show_diagnostics(result)
 
     results = window._results_panel
     assert results.tabs.currentWidget() is results.overview_tab
     assert results.tabs.isTabVisible(results.analysis_tab_index)
     assert results.overview_action_button.text() == "View analysis"
+    assert results.overview_outcome_value.text() == "Analysis complete"
+    controller._on_thread_finished()
     window._set_runtime_state(True, "test runtime")
     results.overview_action_button.click()
     assert "Overlapping Meshes (1)" in results.analysis_edit.toPlainText()

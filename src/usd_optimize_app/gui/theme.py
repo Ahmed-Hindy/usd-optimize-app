@@ -116,4 +116,9 @@ QLabel#BadgeReady {
     background: rgba(112, 180, 139, 0.10); color: #70b48b;
     border: 1px solid rgba(112, 180, 139, 0.20);
 }
+QLabel#BadgeError {
+    padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 700;
+    background: rgba(211, 107, 98, 0.10); color: #d36b62;
+    border: 1px solid rgba(211, 107, 98, 0.20);
+}
 """

@@ -131,6 +131,9 @@ class MainWindow(QMainWindow):
             self._content_stack.setCurrentWidget(self._workspace_splitter)
             self.statusBar().setVisible(True)
         else:
+            self._runtime_badge.setText("RUNTIME UNAVAILABLE")
+            self._runtime_badge.setToolTip(details)
+            self._runtime_badge.setObjectName("BadgeError")
             self._runtime_blocker_detail.setText(
                 f"{details}\n\n"
                 "Extract or reinstall the portable USD Optimize package, then reopen the app."

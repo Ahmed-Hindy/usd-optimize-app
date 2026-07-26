@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
 )
 
 from usd_optimize_app.gui.log_view import configure_log_view
-from usd_optimize_app.gui.scene_graph_view import configure_scene_tree
+from usd_optimize_app.gui.scene_graph_view import configure_scene_tree, selected_prim_paths
 
 
 @dataclass(frozen=True)
@@ -54,8 +54,6 @@ class ResultsPanel(QFrame):
     @property
     def selected_paths(self) -> tuple[str, ...]:
         """Return the selected scope roots, normalized by the tree helper."""
-        from usd_optimize_app.gui.scene_graph_view import selected_prim_paths
-
         return selected_prim_paths(self.scene_tree)
 
     def set_overview(self, state: OverviewState) -> None:

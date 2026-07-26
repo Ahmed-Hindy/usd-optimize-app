@@ -28,7 +28,7 @@ from usd_optimize_app.gui.results_panel import OverviewState, ResultsPanel
 from usd_optimize_app.gui.scene_graph_view import populate_scene_tree
 from usd_optimize_app.gui.stage_inspection import StageInspectionController
 from usd_optimize_app.gui.workflow_panel import WorkflowFormState, WorkflowPanel
-from usd_optimize_app.models import OptimizeResult
+from usd_optimize_app.models import EnvironmentStatus, OptimizeResult
 from usd_optimize_app.operation_scope import scoped_operation_skip_reason
 from usd_optimize_app.operations import get_operation_presentation
 
@@ -47,7 +47,7 @@ class WorkflowController(QObject):
         results_panel: ResultsPanel,
         *,
         preferences: GuiPreferences | None = None,
-        environment_status_provider: Callable = get_environment_status,
+        environment_status_provider: Callable[[], EnvironmentStatus] = get_environment_status,
         confirm_replacement: Callable[[str, str], bool] | None = None,
         show_error: Callable[[str], None] | None = None,
         show_completion: Callable[[OptimizeResult], None] | None = None,
@@ -395,12 +395,12 @@ class WorkflowController(QObject):
         outcome = "No workflow has run for this stage."
         action_label = ""
         action_target = ""
-        if self._active_job is not None:
-            outcome = "Workflow running. Open Log to follow worker output."
-            action_label, action_target = "View log", "log"
-        elif self._latest_outcome is not None:
+        if self._latest_outcome is not None:
             outcome = self._latest_outcome[0]
             action_label, action_target = self._latest_action or ("View log", "log")
+        elif self._active_job is not None:
+            outcome = "Workflow running. Open Log to follow worker output."
+            action_label, action_target = "View log", "log"
         elif inspection is None and self._workflow_panel.input_path:
             outcome = "Inspecting the selected USD stage."
         elif inspection is not None and not inspection.is_valid:
@@ -532,20 +532,7 @@ class WorkflowController(QObject):
         self._job_outcome = (completion_message, "success")
         self._latest_outcome = self._job_outcome
         self._latest_action = (action_label, action_target)
-        self._results_panel.set_overview(
-            OverviewState(
-                stage=self._results_panel.scene_summary_label.text(),
-                scope=(
-                    "Entire stage"
-                    if not self._results_panel.selected_paths
-                    else "Selected prim scope"
-                ),
-                workflow=self._current_preset().display_name if self._current_preset() else "",
-                outcome=completion_message,
-                action_label=action_label,
-                action_target=action_target,
-            )
-        )
+        self._refresh_presentation()
         self._results_panel.show_overview()
 
     def _on_job_failed(self, message: str) -> None:

@@ -252,7 +252,7 @@ class WorkflowPanel(QFrame):
         self.output_browse_button.clicked.connect(self._browse_output)
         self.run_button.clicked.connect(self._on_action_button_clicked)
         self.open_output_button.clicked.connect(self.open_output_requested)
-        QShortcut(QKeySequence.Open, self, activated=self._browse_input)
+        QShortcut(QKeySequence.StandardKey.Open, self, activated=self._browse_input)
         QShortcut(QKeySequence("Ctrl+Return"), self, activated=self._activate_run_shortcut)
 
     def _browse_input(self) -> None:
