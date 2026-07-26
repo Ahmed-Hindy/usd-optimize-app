@@ -8,7 +8,6 @@ import pytest
 from PySide6.QtCore import QSettings
 from PySide6.QtWidgets import QApplication
 
-from usd_optimize_app.gui import main_window
 from usd_optimize_app.gui.main_window import MainWindow
 from usd_optimize_app.gui.preferences import GuiPreferences
 from usd_optimize_app.models import EnvironmentStatus
@@ -39,9 +38,9 @@ def window(qt_application: QApplication, monkeypatch, tmp_path) -> MainWindow:
         operation_count=0,
         errors=("Runtime unavailable for test.",),
     )
-    monkeypatch.setattr(main_window, "GuiPreferences", lambda: preferences)
-    monkeypatch.setattr(main_window, "get_environment_status", lambda: environment_status)
-    created_window = MainWindow()
+    created_window = MainWindow(
+        preferences=preferences,
+        environment_status_provider=lambda: environment_status,
+    )
     yield created_window
-    created_window._active_job = None
     created_window.close()

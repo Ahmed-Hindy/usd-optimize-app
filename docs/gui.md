@@ -5,12 +5,12 @@ The PySide6 GUI is the primary interface in the packaged Windows distribution. D
 ## Workflow
 
 1. Choose, type, paste, or drop a local `.usd`, `.usda`, or `.usdc` stage.
-2. Press Enter or leave the input field to populate the permanent **Scene** and **Diagnostics** tabs.
+2. Press Enter or leave the input field to inspect the stage and refresh the **Overview** summary.
 3. Optionally select one or more prims in **Scene**. Each selected prim and all of its descendants become the workflow scope; no selection means the entire stage.
 4. Choose **Safe Cleanup**, **Geometry Optimization**, or **Find Overlaps**.
 5. Review the workflow description, operation list, scope, skipped-operation markers, and output path.
 6. Select **Run**.
-7. Inspect the log or structured analysis results.
+7. Start in **Overview** for the current stage, scope, workflow, and latest outcome; open its linked detail view when you need the hierarchy, diagnostics, analysis, or log.
 
 The last committed input and output paths are restored on the next launch. No recent-file history or custom operation profiles are stored.
 
@@ -38,7 +38,8 @@ Runs read-only overlapping-mesh analysis on the CPU for predictable hardware-ind
 - **Workflow** — Safe Cleanup, Geometry Optimization, or Find Overlaps. Its description appears directly beneath the selector.
 - **Output USD** — rebuilt after the input is committed with Enter or focus loss. Typing alone does not change it; a manual path is replaced when the new input is committed.
 - **Verified operations** — compact read-only list showing what the workflow runs. Operations that cannot preserve a selected hierarchy boundary are marked as skipped.
-- **Scene** — permanent bounded prim hierarchy with schema types and composition indicators. Use Ctrl- or Shift-click to select multiple prims. A selected parent scopes the workflow to that prim and every descendant, including descendants omitted by display truncation. Selecting both a parent and its child records only the parent scope. **Clear selection** restores whole-stage scope.
+- **Overview** — default result surface for the committed stage. It summarizes source-stage facts, selected scope, workflow, and the latest outcome, then links to the most useful detailed result.
+- **Scene** — bounded prim hierarchy with schema types and composition indicators. Use Ctrl- or Shift-click to select multiple prims. A selected parent scopes the workflow to that prim and every descendant, including descendants omitted by display truncation. Selecting both a parent and its child records only the parent scope. **Clear selection** restores whole-stage scope.
 - **Run / Cancel** — starts or interrupts the active worker process.
 - **Open output folder** — opens the derivative folder after a write workflow.
 - Existing outputs are confirmed only when **Run** is pressed; the form does not show an early replacement error.
