@@ -360,7 +360,9 @@ class WorkflowController(QObject):
                 message += f" · Skipped to preserve scope: {', '.join(skipped_labels)}"
         self._results_panel.scene_scope_label.setText(message)
         self._results_panel.scene_scope_label.setToolTip(message)
-        self._results_panel.clear_scope_button.setEnabled(bool(paths) and self._active_job is None)
+        scope_controls_enabled = self._active_job is None
+        self._results_panel.scene_tree.setEnabled(scope_controls_enabled)
+        self._results_panel.clear_scope_button.setEnabled(bool(paths) and scope_controls_enabled)
 
     def _update_workflow_details(self, preset: PresetView | None, is_scoped: bool) -> None:
         if preset is None:

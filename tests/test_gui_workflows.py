@@ -79,6 +79,34 @@ def test_run_uses_selected_scene_prims_as_hierarchy_scope(
     assert captured_settings[0].prim_paths == ("/World/Asset",)
 
 
+def test_running_workflow_locks_scene_scope(window: MainWindow, tmp_path: Path) -> None:
+    class FakeJob:
+        def isRunning(self) -> bool:  # noqa: N802
+            return False
+
+    workflow = window._workflow_panel
+    results = window._results_panel
+    controller = window._controller
+    workflow.set_input_path(str(tmp_path / "asset.usda"))
+    _complete_scene_inspection(
+        window,
+        InputInspection(
+            is_valid=True,
+            message="Stage ready",
+            root_prim_count=1,
+            prim_count=1,
+            scene_graph=(SceneGraphNode(name="Asset", path="/Asset", type_name="Xform"),),
+        ),
+    )
+    results.scene_tree.topLevelItem(0).setSelected(True)
+    controller._active_job = FakeJob()
+
+    controller._refresh_presentation()
+
+    assert results.scene_tree.isEnabled() is False
+    assert results.clear_scope_button.isEnabled() is False
+
+
 def test_workflow_and_scope_drive_operation_presentation(
     window: MainWindow, tmp_path: Path
 ) -> None:
