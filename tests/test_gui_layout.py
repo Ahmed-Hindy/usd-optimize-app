@@ -6,46 +6,46 @@ from PySide6.QtWidgets import QFormLayout, QToolButton
 from usd_optimize_app.gui.main_window import MainWindow
 
 
-def test_gui_exposes_only_explicit_user_workflows(window: MainWindow) -> None:
-    workflow_names = [
-        window._workflow_combo.itemText(index) for index in range(window._workflow_combo.count())
-    ]
+def test_workflow_panel_exposes_reviewed_workflows(window: MainWindow) -> None:
+    panel = window._workflow_panel
 
-    assert workflow_names == [
-        "Safe Cleanup",
-        "Geometry Optimization",
-        "Find Overlaps",
-    ]
-    assert window._current_preset().name == "safe_publish"
-    assert window._run_button.text() == "Run workflow"
+    names = [panel.workflow_combo.itemText(index) for index in range(panel.workflow_combo.count())]
+
+    assert names == ["Safe Cleanup", "Geometry Optimization", "Find Overlaps"]
+    assert panel.workflow_name == "safe_publish"
+    assert panel.run_button.text() == "Run workflow"
 
 
-def test_workflow_layout_and_result_tab_order(window: MainWindow) -> None:
+def test_panels_own_layout_and_summary_led_tab_order(window: MainWindow) -> None:
+    workflow = window._workflow_panel
+    results = window._results_panel
     labels = []
-    for row_index in range(window._file_form_layout.rowCount()):
-        label_item = window._file_form_layout.itemAt(row_index, QFormLayout.ItemRole.LabelRole)
+    for row_index in range(workflow.form_layout.rowCount()):
+        label_item = workflow.form_layout.itemAt(row_index, QFormLayout.ItemRole.LabelRole)
         labels.append(label_item.widget().text())
 
-    workflow_item = window._file_form_layout.itemAt(1, QFormLayout.ItemRole.FieldRole)
-    workflow_layout = window._workflow_field_widget.layout()
-    tab_names = [window._tabs.tabText(index) for index in range(window._tabs.count())]
+    tab_names = [results.tabs.tabText(index) for index in range(results.tabs.count())]
 
     assert labels == ["SOURCE USD", "WORKFLOW", "OUTPUT USD"]
-    assert workflow_item.widget() is window._workflow_field_widget
-    assert workflow_layout.itemAt(0).widget() is window._workflow_combo
-    assert workflow_layout.itemAt(1).widget() is window._description_label
-    assert window._output_row.itemAt(2).widget() is window._open_output_button
-    assert isinstance(window._open_output_button, QToolButton)
-    assert window._open_output_button.accessibleName() == "Open output folder"
-    assert tab_names == ["Scene", "Diagnostics", "Analysis", "Log"]
-    assert window._tabs.isTabVisible(window._scene_tab_index)
-    assert window._tabs.isTabVisible(window._diagnostics_tab_index)
+    assert (
+        workflow.form_layout.itemAt(1, QFormLayout.ItemRole.FieldRole).widget()
+        is workflow.workflow_field_widget
+    )
+    assert workflow.workflow_field_widget.layout().itemAt(0).widget() is workflow.workflow_combo
+    assert workflow.output_row.itemAt(2).widget() is workflow.open_output_button
+    assert isinstance(workflow.open_output_button, QToolButton)
+    assert workflow.open_output_button.accessibleName() == "Open output folder"
+    assert tab_names == ["Overview", "Scene", "Diagnostics", "Analysis", "Log"]
+    assert results.tabs.currentWidget() is results.overview_tab
+    assert results.tabs.isTabVisible(results.analysis_tab_index) is False
 
 
 def test_operation_list_is_read_only(window: MainWindow) -> None:
-    assert window._operation_list.count() == 4
-    for index in range(window._operation_list.count()):
-        item = window._operation_list.item(index)
+    operation_list = window._workflow_panel.operation_list
+
+    assert operation_list.count() == 4
+    for index in range(operation_list.count()):
+        item = operation_list.item(index)
         assert not item.flags() & Qt.ItemFlag.ItemIsUserCheckable
         assert not item.flags() & Qt.ItemFlag.ItemIsSelectable
 
