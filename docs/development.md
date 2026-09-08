@@ -68,9 +68,34 @@ uv run usdopt smoke-test --external-assets
 
 See [external asset smoke tests](external-asset-smoke-tests.md) for the cache and manifest details, [operational smoke tests](operational-smoke-tests.md) for the recorded validation procedure, and [operation support](operation-support.md) for the 48-operation product classification.
 
+## Developer operations
+
+The NVIDIA runtime registers 48 operations. Most change topology or hierarchy,
+depend on hardware, or require asset-specific parameters, so they are available
+through developer presets and the operation matrix rather than general GUI controls.
+
+```powershell
+uv --system-certs run usdopt list-presets --all
+uv --system-certs run usdopt operation-matrix --input tests/fixtures/teapot/teapot.usd
+```
+
+The [operation support matrix](operation-support.md) explains each classification.
+The [operations reference](operations.md) maps operations to presets and describes
+their effects.
+
 ## Portable release
 
 The local and CI packaging procedure is documented in the [Windows portable release guide](windows-portable-release.md). The builder installs the CLI and GUI from the same project package, bundles the NVIDIA runtime, and executes its smoke tests from inside the assembled directory.
+
+The packaging workflow uses one locked app environment and one NVIDIA runtime
+package. Before archiving, it checks runtime and operation discovery, CLI preset
+discovery, native Windows and offscreen GUI construction, diagnostic operations,
+and Safe Cleanup with a saved USD output.
+
+`manifest.json` records the bundled application, Python, PySide6, and NVIDIA
+runtime versions. The release includes a `.sha256` file for archive verification.
+Historical archive-size measurements and component sizes are recorded in the
+[portable release guide](windows-portable-release.md#local-build).
 
 ## Reports and CI
 
