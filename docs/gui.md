@@ -55,4 +55,4 @@ Reports retain the normalized selected root prim paths in `prim_paths`, the oper
 - `Ctrl+Enter` — run the current workflow when ready.
 - `Esc` — cancel the active workflow.
 
-See [operation support](operation-support.md) for the complete 47-operation classification and [development](development.md) for source setup and validation.
+See [operation support](operation-support.md) for the complete 48-operation classification and [development](development.md) for source setup and validation.

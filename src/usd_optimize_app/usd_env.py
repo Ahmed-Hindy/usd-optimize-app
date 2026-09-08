@@ -70,11 +70,6 @@ def get_runtime_paths(runtime_root: Path | None = None) -> RuntimePaths:
     return resolve_runtime_paths(resolved_runtime_root)
 
 
-def detect_required_python_version(_runtime_root: Path | None) -> str | None:
-    """Return the required Python ABI when it can be inferred."""
-    return None
-
-
 def check_environment() -> EnvironmentStatus:
     """Inspect the strict usd-optimize runtime artifact state."""
     runtime_root = find_runtime_root()

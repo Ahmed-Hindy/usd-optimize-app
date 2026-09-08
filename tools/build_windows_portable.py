@@ -99,7 +99,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output-dir", type=Path, default=Path("dist"), help="Output directory.")
     parser.add_argument("--version", help="Application version. Defaults to pyproject.toml.")
     parser.add_argument(
-        "--usd-optimize-version", default="1.1.0", help="Bundled NVIDIA runtime version."
+        "--usd-optimize-version", default="1.2.1", help="Bundled NVIDIA runtime version."
     )
     parser.add_argument(
         "--usd-optimize-license", required=True, type=Path, help="Upstream LICENSE file."

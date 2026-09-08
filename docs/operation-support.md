@@ -1,6 +1,6 @@
 # Operation Support Matrix
 
-NVIDIA `usd-optimize` v1.1.0 registers 47 operations in the bundled Windows runtime. Registration and successful execution do not by themselves make an operation appropriate for a general artist-facing workflow. This project classifies every registered operation by its configuration requirements and expected scene impact.
+NVIDIA `usd-optimize` v1.2.1 registers 48 operations in the bundled Windows runtime. Registration and successful execution do not by themselves make an operation appropriate for a general artist-facing workflow. This project classifies every registered operation by its configuration requirements and expected scene impact.
 
 The source of truth is `src/usd_optimize_app/operation_support.py`. The operation matrix writes each tier into `operation-matrix.json` so runtime checks, documentation, and product exposure remain aligned.
 
@@ -19,7 +19,7 @@ These operations support two explicit GUI workflows plus automatic stage diagnos
 
 The write operations preserve the intended hierarchy and topology of the supported cleanup workflow. `printStats` runs automatically with GUI input inspection, while `findOverlappingMeshes` remains an explicit read-only workflow. Neither writes a USD derivative. Overlap analysis is explicitly configured with `useGpu: false` for predictable CPU behavior.
 
-### Advanced — 24
+### Advanced — 25
 
 These operations execute, but can change topology, hierarchy, schemas, composition, authored structure, or shading data; or they expose developer diagnostics without a complete end-user contract:
 
@@ -36,6 +36,7 @@ These operations execute, but can change topology, hierarchy, schemas, compositi
 - `merge`
 - `mergeVertices`
 - `meshCleanup`
+- `moveMaterials`
 - `optimizeSkelRoots`
 - `organizePrototypes`
 - `primitivesToMeshes`

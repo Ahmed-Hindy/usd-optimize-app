@@ -40,28 +40,28 @@ usd-optimize-app-<version>-windows-x86_64/
 10. creates a maximum-deflate ZIP and SHA-256 checksum;
 11. uploads the workflow artifact and attaches tagged builds to a GitHub release.
 
-The workflow defaults to NVIDIA `usd-optimize` v1.1.0, OpenUSD 25.11, and CPython 3.12.
+The workflow defaults to NVIDIA `usd-optimize` v1.2.1, OpenUSD 25.11, and CPython 3.12.
 
 ## Local build
 
-Use an already extracted v1.1.0 runtime to avoid another large download:
+Use an already extracted v1.2.1 runtime to avoid another large download:
 
 ```powershell
 $pythonRoot = "C:\Program Files\Python312"
-$runtimeRoot = "..\usd-optimize\.artifacts\usd-optimize-v1.1.0-windows-25.11-py3.12\release-runtime"
+$runtimeRoot = "..\usd-optimize\.artifacts\usd-optimize-v1.2.1-windows-25.11-py3.12\release-runtime"
 
 uv run python tools\build_windows_portable.py `
   --runtime-root $runtimeRoot `
   --python-root $pythonRoot `
   --output-dir dist `
-  --usd-optimize-version 1.1.0 `
+  --usd-optimize-version 1.2.1 `
   --usd-optimize-license ..\usd-optimize\LICENSE `
   --smoke-input tests\fixtures\teapot\teapot.usd
 ```
 
 The builder removes the copied interpreter's existing `site-packages`, installs only the locked runtime dependencies and this project, and isolates the packaged interpreter from user-site Python packages. It then keeps only the Qt Core, Gui, and Widgets modules used by the application, the required Windows platform and image plugins, and runtime DLLs. Development headers, import libraries, tests, documentation, QML components, and Qt tooling are excluded.
 
-For the current v1.1.0 runtime, the expected artifact is approximately 180–190 MiB compressed and 550–560 MiB expanded. Most of that size is NVIDIA/OpenUSD native code: roughly 154 MiB of the compressed archive is the `usd-optimize` runtime, while Python and Qt account for about 28 MiB. Materially smaller builds would require removing USD libraries or optimization operations rather than packaging waste.
+For the previously measured v1.1.0 runtime, the artifact is approximately 180–190 MiB compressed and 550–560 MiB expanded. Most of that size is NVIDIA/OpenUSD native code: roughly 154 MiB of the compressed archive is the `usd-optimize` runtime, while Python and Qt account for about 28 MiB. Materially smaller builds would require removing USD libraries or optimization operations rather than packaging waste.
 
 ## Validation performed inside the artifact
 
