@@ -1,6 +1,6 @@
 [project]
 name = "usd-optimize-app"
-version = "0.1.3"
+version = "0.2.0"
 description = "Standalone CLI and PySide6 GUI wrapper for NVIDIA usd-optimize."
 readme = "README.md"
 requires-python = ">=3.10"
