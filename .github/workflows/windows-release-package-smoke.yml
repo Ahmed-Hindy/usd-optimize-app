@@ -6,7 +6,7 @@ on:
       release_tag:
         description: "Upstream release tag to test"
         required: true
-        default: "v1.1.0"
+        default: "v1.2.1"
         type: string
       asset_pattern:
         description: "Exactly one Windows CPython 3.12 release asset pattern"

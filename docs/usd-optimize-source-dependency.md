@@ -2,13 +2,13 @@
 
 ## Decision
 
-`usd-optimize-app` uses NVIDIA's Windows 1.1.0 runtime package from the sibling
+`usd-optimize-app` uses NVIDIA's Windows 1.2.1 runtime package from the sibling
 `usd-optimize` artifact directory.
 
 The required runtime root is:
 
 ```text
-../usd-optimize/.artifacts/usd-optimize-v1.1.0-windows-25.11-py3.12/release-runtime
+../usd-optimize/.artifacts/usd-optimize-v1.2.1-windows-25.11-py3.12/release-runtime
 ```
 
 Set `USD_OPTIMIZE_RUNTIME_ROOT` to use another extracted package with the same
@@ -20,10 +20,13 @@ packages or source build folders.
 The validated release package zip is:
 
 ```text
-usd_optimize_usd_25.11_py_3.12@1.1.0.1-1-0.986.80031f97.gl.windows-x86_64.release.zip
+usd_optimize_usd_25.11_py_3.12@1.2.1.1-2-1.1193.bec04ac2.gl.windows-x86_64.release.zip
 ```
 
 That zip is extracted into the required `release-runtime` folder.
+
+See [v1.2.1 validation](runtime-v1.2.1-validation.md) for the current package
+checksum and runtime results. The July validation below records the older v1.1.0 baseline.
 
 ## Required runtime layout
 
@@ -38,7 +41,7 @@ release-runtime/extraLibs
 ```
 
 The app configures the package's documented `python`, `usdpy`, `lib`,
-`lib/operations`, and `extraLibs` search paths. The 1.1.0 package loads and
+`lib/operations`, and `extraLibs` search paths. The package loads and
 auto-registers operations through its public Python API; no app-side plugin
 loader or bootstrap shim is used.
 

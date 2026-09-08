@@ -185,6 +185,12 @@ OPERATION_SUPPORT = {
         "write",
         "Can remove or rewrite malformed geometry.",
     ),
+    "moveMaterials": _support(
+        "moveMaterials",
+        "advanced",
+        "write",
+        "Moves material prims with namespace edits and changes authored hierarchy.",
+    ),
     "optimizeMaterials": _support(
         "optimizeMaterials",
         "supported",

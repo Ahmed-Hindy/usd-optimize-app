@@ -6,7 +6,7 @@ on:
       usd_optimize_release_tag:
         description: "NVIDIA usd-optimize release tag"
         required: true
-        default: "v1.1.0"
+        default: "v1.2.1"
         type: string
       usd_optimize_asset_pattern:
         description: "Windows CPython 3.12 release asset pattern"
@@ -21,7 +21,7 @@ permissions:
   contents: write
 
 env:
-  USD_OPTIMIZE_RELEASE_TAG: ${{ inputs.usd_optimize_release_tag || 'v1.1.0' }}
+  USD_OPTIMIZE_RELEASE_TAG: ${{ inputs.usd_optimize_release_tag || 'v1.2.1' }}
   USD_OPTIMIZE_ASSET_PATTERN: ${{ inputs.usd_optimize_asset_pattern || '*usd_25.11_py_3.12@*.windows-x86_64.release.zip' }}
 
 jobs:

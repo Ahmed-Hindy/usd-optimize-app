@@ -13,6 +13,7 @@ It verifies:
 4. CPU overlap analysis returns the 22 known McUsd paths and zero suppressed overlaps.
 5. The packaged `usdOptimize.exe` completes an overlap-analysis command.
 6. Optionally, six conservative operation stacks run over seven checksum-pinned OpenUSD tutorial assets (42 runs total).
+7. `usdMtlx` loads, reads a MaterialX layer, and parses a supplied shader definition with its expected input. This uses a self-contained definition because the package does not bundle the standard MaterialX shader library.
 
 The package is the system under test; the checked-in McUsd fixture is input only.
 
@@ -20,7 +21,7 @@ The package is the system under test; the checked-in McUsd fixture is input only
 
 ```powershell
 uv run python tools/release_smoke/windows_package_smoke.py `
-  --package-archive C:\path\to\usd_optimize_usd_25.11_py_3.12@1.1.0.1-1-0.986.80031f97.gl.windows-x86_64.release.zip `
+  --package-archive C:\path\to\usd_optimize_usd_25.11_py_3.12@1.2.1.1-2-1.1193.bec04ac2.gl.windows-x86_64.release.zip `
   --overlap-fixture-usd tests/fixtures/mcusd/McUsd.usda
 ```
 
@@ -39,5 +40,5 @@ Then add `--external-asset-manifest`, `--external-assets-dir`, and
 ## GitHub Actions
 
 Dispatch **Windows release package smoke** from the Actions tab. The workflow
-defaults to upstream `v1.1.0`; set **Run external matrix** to false when only
+defaults to upstream `v1.2.1`; set **Run external matrix** to false when only
 the focused package-loader and overlap regression checks are needed.

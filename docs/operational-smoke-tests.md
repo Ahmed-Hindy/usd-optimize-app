@@ -7,18 +7,21 @@ This file records the current operational checks for `usd-optimize-app` against 
 The app defaults to this runtime artifact:
 
 ```text
-../usd-optimize/.artifacts/usd-optimize-v1.1.0-windows-25.11-py3.12/release-runtime
+../usd-optimize/.artifacts/usd-optimize-v1.2.1-windows-25.11-py3.12/release-runtime
 ```
 
 Set `USD_OPTIMIZE_RUNTIME_ROOT` to explicitly test another extracted package.
-The current default was refreshed on 2026-07-20 from NVIDIA's public 1.1.0
-Windows package:
+The current default targets NVIDIA's public 1.2.1 Windows package. Historical
+validation below retains the versions and dates actually tested.
 
 ```text
-usd_optimize_usd_25.11_py_3.12@1.1.0.1-1-0.986.80031f97.gl.windows-x86_64.release.zip
+usd_optimize_usd_25.11_py_3.12@1.2.1.1-2-1.1193.bec04ac2.gl.windows-x86_64.release.zip
 ```
 
 ## One-command smoke test
+
+For the v1.2.1 upgrade results, including the MaterialX and GPU shutdown
+before/after comparison, see [runtime v1.2.1 validation](runtime-v1.2.1-validation.md).
 
 Use this command for the normal local operational check:
 
@@ -120,9 +123,9 @@ Report: reports/openusd_helloworld.safe_publish.usda.report.json
 Log: reports/openusd_helloworld.safe_publish.usda.log
 ```
 
-## Interpretation
+## Historical validation interpretation
 
-The app is operational for the current small-fixture workflow:
+The earlier runtime was operational for the small-fixture workflow:
 
 - the configured runtime artifact is found;
 - `pxr` imports from the artifact;

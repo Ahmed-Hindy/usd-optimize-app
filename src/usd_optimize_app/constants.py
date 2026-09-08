@@ -18,7 +18,7 @@ DEVELOPMENT_USD_OPTIMIZE_RUNTIME_ROOT = (
     PROJECT_ROOT.parent
     / "usd-optimize"
     / ".artifacts"
-    / "usd-optimize-v1.1.0-windows-25.11-py3.12"
+    / "usd-optimize-v1.2.1-windows-25.11-py3.12"
     / "release-runtime"
 )
 DEFAULT_USD_OPTIMIZE_RUNTIME_ROOT = DEVELOPMENT_USD_OPTIMIZE_RUNTIME_ROOT

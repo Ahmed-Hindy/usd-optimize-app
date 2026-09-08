@@ -1,10 +1,11 @@
 # Runtime Operations Reference
 
-The bundled NVIDIA `usd-optimize` 1.1.0 runtime registers 47 operations. The
+The bundled NVIDIA `usd-optimize` 1.2.1 runtime registers 48 operations. The
 **What it does** text has been verified against NVIDIA's official [Scene
 Optimizer operations documentation](https://docs.omniverse.nvidia.com/extensions/latest/ext_scene-optimizer/operations.html)
 and, for operations not published on that page, the operation description in
-the matching NVIDIA 1.1.0 source checkout required by this app. It describes
+the previously reviewed NVIDIA 1.1.0 source checkout. The added `moveMaterials`
+entry follows the shipped 1.2.1 changelog. This reference describes
 the operation's behavior, not this app's safety policy.
 
 `executionContext`, which appears in every preset, is not an operation in this
@@ -17,6 +18,7 @@ registry. It supplies execution flags such as verbose logging and analysis mode.
 | `computeExtents` | Computes or recomputes and authors the `extents` property for meshes. | Supported; writes USD | Safe Cleanup; Animated Cleanup Comparison; Prototype Rewrite Test |
 | `decimateMeshes` | Reduces mesh tessellation density subject to configured quality/error limits. | Advanced; writes USD | Destructive Geometry Stress |
 | `deduplicateGeometry` | Replaces duplicate meshes with one mesh plus references or instances to it. | Advanced; writes USD | Destructive Geometry Stress; Prototype Rewrite Test |
+| `moveMaterials` | Moves material prims using USD namespace edits, changing their hierarchy. | Advanced; writes USD | Developer operation matrix |
 | `findOverlappingMeshes` | Finds interfering geometry in a stage. | Supported; read-only analysis | Find Overlaps |
 | `flattenHierarchy` | Removes redundant `Xform` prims to reduce prim count. | Advanced; writes USD | Destructive Geometry Stress |
 | `merge` | Replaces meshes that share common properties with a single merged mesh. | Advanced; writes USD | Destructive Geometry Stress |

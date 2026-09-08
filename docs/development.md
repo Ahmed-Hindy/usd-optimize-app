@@ -66,7 +66,7 @@ For the broader external asset suite, prepare the cache in the sibling `usd-opti
 uv run usdopt smoke-test --external-assets
 ```
 
-See [external asset smoke tests](external-asset-smoke-tests.md) for the cache and manifest details, [operational smoke tests](operational-smoke-tests.md) for the recorded validation procedure, and [operation support](operation-support.md) for the 47-operation product classification.
+See [external asset smoke tests](external-asset-smoke-tests.md) for the cache and manifest details, [operational smoke tests](operational-smoke-tests.md) for the recorded validation procedure, and [operation support](operation-support.md) for the 48-operation product classification.
 
 ## Portable release
 

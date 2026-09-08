@@ -29,6 +29,7 @@ EXPECTED_RUNTIME_OPERATIONS = {
     "merge",
     "mergeVertices",
     "meshCleanup",
+    "moveMaterials",
     "optimizeMaterials",
     "optimizePrimvars",
     "optimizeSkelRoots",

@@ -16,6 +16,35 @@ import zipfile
 from pathlib import Path
 
 CHECKS = {
+    "materialx_shader_lookup": """
+        import tempfile
+        from pathlib import Path
+
+        from pxr import Plug, Sdf, Sdr
+
+        plugin = Plug.Registry().GetPluginWithName("usdMtlx")
+        assert plugin, "usdMtlx plugin is missing"
+        assert plugin.Load(), "usdMtlx plugin could not load its runtime DLLs"
+        assert Sdf.FileFormat.FindByExtension("mtlx"), "MaterialX file format is missing"
+        # The runtime does not ship MaterialX's standard shader library. Supply
+        # a self-contained definition to test the parser and its DLL dependencies.
+        with tempfile.TemporaryDirectory() as directory:
+            asset = Path(directory) / "smoke.mtlx"
+            asset.write_text('''<?xml version="1.0"?>
+                <materialx version="1.38">
+                  <nodedef name="ND_usdopt_test" node="usdopt_test" nodegroup="texture2d">
+                    <input name="value" type="color3" value="0.1, 0.2, 0.3" />
+                    <output name="out" type="color3" />
+                  </nodedef>
+                </materialx>''', encoding="utf-8")
+            assert Sdf.Layer.FindOrOpen(str(asset)), "MaterialX layer could not be read"
+            shader = Sdr.Registry().GetShaderNodeFromAsset(
+                Sdf.AssetPath(str(asset)), {}, "ND_usdopt_test", "mtlx"
+            )
+            assert shader and shader.IsValid(), "MaterialX shader parsing failed"
+            assert "value" in shader.GetShaderInputNames(), "MaterialX shader input missing"
+        print("MaterialX plugin, file format, and supplied shader definition parsed successfully")
+    """,
     "pxr_import": """
         from pxr import Usd
 

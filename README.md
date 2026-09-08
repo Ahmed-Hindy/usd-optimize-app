@@ -50,7 +50,7 @@ Open a terminal in the extracted directory and run:
 
 Select one or more prims in the Scene tree to run a workflow on those prims and all descendants. Clear the selection to process the entire stage. Prim-scoped Safe Cleanup skips material deduplication because that NVIDIA operation can rebind consumers outside the selected hierarchy; the app marks and reports the omission.
 
-The NVIDIA runtime registers 47 operations, but most are topology-changing, structural, hardware-dependent, or require asset-specific parameters. They remain available to developers through the operation matrix and developer presets rather than being exposed as general artist controls. Run `usdopt list-presets --all` to include those developer-only presets.
+The NVIDIA runtime registers 48 operations, but most are topology-changing, structural, hardware-dependent, or require asset-specific parameters. They remain available to developers through the operation matrix and developer presets rather than being exposed as general artist controls. Run `usdopt list-presets --all` to include those developer-only presets.
 
 ## Release validation
 
