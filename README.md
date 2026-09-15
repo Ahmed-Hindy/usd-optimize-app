@@ -4,6 +4,7 @@ A CLI/ GUI app for optimizing OpenUSD scenes.
 
 ![USD](https://img.shields.io/badge/file%20format-USD-6B5B95)
 ![PySide6](https://img.shields.io/badge/interface-PySide6-41CD52?logo=qt&logoColor=white)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
 ![USD Optimize App interface showing the Safe Cleanup workflow and scene hierarchy](a.png)
 
@@ -45,4 +46,8 @@ Open a terminal in the extracted folder:
 - [Operation support](docs/operation-support.md)
 - [Reports](docs/report-summary.md)
 - [Development guide](docs/development.md)
+
+## License
+
+Apache-2.0. See [LICENSE](LICENSE).
 
