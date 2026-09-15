@@ -3,7 +3,8 @@ name = "usd-optimize-app"
 version = "0.2.0"
 description = "Standalone CLI and PySide6 GUI wrapper for NVIDIA usd-optimize."
 readme = "README.md"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
 dependencies = [
     "pyside6-essentials>=6.6",
@@ -20,7 +21,7 @@ dev = [
 ]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
