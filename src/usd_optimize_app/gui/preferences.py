@@ -31,22 +31,32 @@ class GuiPreferences:
 
     def load_paths(self) -> SavedPaths:
         """Return the last saved input and output paths."""
-        return SavedPaths(
-            input_path=_coerce_string(self._settings.value(LAST_INPUT_KEY, "")),
-            output_path=_coerce_string(self._settings.value(LAST_OUTPUT_KEY, "")),
-        )
+        try:
+            return SavedPaths(
+                input_path=_coerce_string(self._settings.value(LAST_INPUT_KEY, "")),
+                output_path=_coerce_string(self._settings.value(LAST_OUTPUT_KEY, "")),
+            )
+        except RuntimeError:
+            return SavedPaths(input_path="", output_path="")
 
     def save_input_path(self, input_path: str) -> None:
         """Save the committed input path."""
-        self._settings.setValue(LAST_INPUT_KEY, input_path.strip())
-        self._settings.sync()
+        try:
+            self._settings.setValue(LAST_INPUT_KEY, input_path.strip())
+            self._settings.sync()
+        except RuntimeError:
+            return
 
     def save_output_path(self, output_path: str) -> None:
         """Save the output path currently shown in the GUI."""
-        self._settings.setValue(LAST_OUTPUT_KEY, output_path.strip())
-        self._settings.sync()
+        try:
+            self._settings.setValue(LAST_OUTPUT_KEY, output_path.strip())
+            self._settings.sync()
+        except RuntimeError:
+            return
 
 
 def _coerce_string(value: object) -> str:
     """Return a settings value as a stripped string."""
     return value.strip() if isinstance(value, str) else ""
+

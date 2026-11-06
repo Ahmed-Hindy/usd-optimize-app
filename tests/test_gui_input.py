@@ -120,8 +120,8 @@ def test_diagnostics_are_rendered_in_results_panel(window: MainWindow, tmp_path:
         worker_output="""
 | Faces: 1,236 |
 | Vertices: 1,286 |
-| Mesh  2  0  0 |
-| Total  2  0  0 |
+| Mesh  1240  0  0 |
+| Total  1240  0  0 |
 """,
     )
 
@@ -129,7 +129,9 @@ def test_diagnostics_are_rendered_in_results_panel(window: MainWindow, tmp_path:
 
     results = window._results_panel
     assert results.diagnostic_table.rowCount() == 2
-    assert "2 prims" in results.diagnostics_summary_label.text()
+    assert results.diagnostic_table.item(0, 1).text() == "1,240"
+    assert results.diagnostic_table.item(1, 0).font().bold() is True
+    assert "1,240 prims" in results.diagnostics_summary_label.text()
     assert "1,236 faces" in results.diagnostics_summary_label.text()
 
 

@@ -242,3 +242,32 @@ def test_shutdown_cancels_and_joins_active_job(window: MainWindow) -> None:
     assert window._controller.shutdown() is True
     assert active_job.cancelled is True
     assert active_job.wait_timeout == 5_000
+
+
+def test_runtime_retry_button_refreshes_environment_status(
+    window: MainWindow, monkeypatch
+) -> None:
+    refreshed = []
+    monkeypatch.setattr(
+        window._controller,
+        "refresh_environment_status",
+        lambda: refreshed.append(True),
+    )
+
+    window._runtime_retry_button.click()
+
+    assert refreshed == [True]
+
+
+def test_shutdown_prevents_late_focus_commit(
+    window: MainWindow, monkeypatch, tmp_path: Path
+) -> None:
+    inspected = []
+    monkeypatch.setattr(window._controller._inspection_controller, "inspect", inspected.append)
+    window._workflow_panel.set_input_path(str(tmp_path / "asset.usda"))
+    window._controller.handle_input_edited()
+
+    assert window._controller.shutdown() is True
+    window._controller.commit_input(False)
+
+    assert inspected == []

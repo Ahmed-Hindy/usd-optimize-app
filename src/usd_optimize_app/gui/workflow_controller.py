@@ -70,6 +70,7 @@ class WorkflowController(QObject):
         self._inspection_controller.diagnostics_failed.connect(self._on_input_diagnostics_failed)
         self._active_job: OptimizeJobThread | None = None
         self._environment_usable = False
+        self._shutting_down = False
         self._input_dirty = False
         self._last_inspected_input = ""
         self._output_is_auto_generated = True
@@ -120,6 +121,8 @@ class WorkflowController(QObject):
 
     def commit_input(self, force: bool) -> None:
         """Commit the selected source, derive output, and start inspection."""
+        if self._shutting_down:
+            return
         input_text = self._workflow_panel.input_path
         if not force and not self._input_dirty and input_text == self._last_inspected_input:
             return
@@ -130,6 +133,8 @@ class WorkflowController(QObject):
 
     def handle_output_changed(self, output_text: str) -> None:
         """Persist manual output changes and restore automatic output when cleared."""
+        if self._shutting_down:
+            return
         if not self._setting_auto_output:
             self._output_is_auto_generated = not output_text.strip()
             if self._output_is_auto_generated:
@@ -188,12 +193,15 @@ class WorkflowController(QObject):
 
     def shutdown(self, timeout_ms: int = THREAD_SHUTDOWN_TIMEOUT_MS) -> bool:
         """Cancel jobs and inspection work before Qt destroys its objects."""
+        self._shutting_down = True
         if self._active_job is not None and self._active_job.isRunning():
             self._active_job.cancel()
             if not self._active_job.wait(timeout_ms):
+                self._shutting_down = False
                 self._set_status("Waiting for workflow cancellation…", "warning")
                 return False
         if not self._inspection_controller.shutdown(timeout_ms):
+            self._shutting_down = False
             self._set_status("Waiting for stage inspection to finish…", "warning")
             return False
         return True
@@ -339,6 +347,7 @@ class WorkflowController(QObject):
             message = f"Scope: {paths[0]} and all descendants"
         else:
             message = f"Scope: {len(paths)} selected prim roots and all descendants"
+        skipped_labels: list[str] = []
         if paths and preset is not None:
             skipped_labels = [
                 get_operation_presentation(operation_name).label
@@ -349,6 +358,12 @@ class WorkflowController(QObject):
                 message += f" · Skipped to preserve scope: {', '.join(skipped_labels)}"
         self._results_panel.scene_scope_label.setText(message)
         self._results_panel.scene_scope_label.setToolTip(message)
+        if not paths:
+            self._results_panel.scene_scope_label.setStyleSheet("color: #9e9a91;")
+        elif skipped_labels:
+            self._results_panel.scene_scope_label.setStyleSheet("color: #d0a05c;")
+        else:
+            self._results_panel.scene_scope_label.setStyleSheet("color: #e5e1d8;")
         scope_controls_enabled = self._active_job is None
         self._results_panel.scene_tree.setEnabled(scope_controls_enabled)
         self._results_panel.clear_scope_button.setEnabled(bool(paths) and scope_controls_enabled)
@@ -391,14 +406,14 @@ class WorkflowController(QObject):
     def _input_presentation(self, reason: str | None) -> tuple[str, str]:
         inspection = self._inspection_controller.scene_result
         if self._input_dirty:
-            return "Press Enter or leave the field to inspect.", "neutral"
+            return "Press Enter or leave the field to inspect.", "info"
         if inspection is not None:
             return inspection.message, "success" if inspection.is_valid else "error"
         if not self._workflow_panel.input_path:
-            return "Choose a USD file to inspect the stage.", "neutral"
+            return "", "neutral"
         if reason and "Inspecting" in reason:
-            return "Inspecting stage…", "neutral"
-        return "Choose a USD file to inspect the stage.", "neutral"
+            return "Inspecting stage…", "info"
+        return "", "neutral"
 
     def _run_blocking_reason(self) -> str | None:
         if self._active_job is not None:
