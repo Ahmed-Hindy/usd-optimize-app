@@ -2,7 +2,7 @@
 
 ## Using the GUI
 
-Launch the app with `usdopt-gui.cmd` (portable release) or `uv run usdopt-gui` (from source).
+Launch the app with `.\usdopt-gui.cmd` (portable release) or `uv run usdopt-gui` (from source).
 
 1. **Open a stage** — Browse, paste a path, or drag and drop a `.usd`, `.usda`, or `.usdc` file into **Input USD**. Press `Enter` (or click away) to load the scene hierarchy, refresh the default output path, and run stage diagnostics. The app remembers the last committed input and output paths across launches.
 2. **Set the scope (optional)** — Select one or more prims in the **Scene** tab (`Ctrl`- or `Shift`-click for multi-select) to target only those prims and all of their descendants (including any descendants truncated in the tree preview). Click **Clear selection** to target the whole stage.
@@ -11,11 +11,10 @@ Launch the app with `usdopt-gui.cmd` (portable release) or `uv run usdopt-gui` (
 
 ### Result tabs
 
-- **Overview** — Summary of the loaded stage, active scope, selected workflow, and latest run result.
+- **Overview** — Displays the loaded stage, active scope, selected workflow, latest run result, and the **Stage Statistics** table (prim counts, inactive/invisible counts, faces, and vertices collected automatically in a temporary directory when a stage is loaded).
 - **Scene** — Bounded prim hierarchy with schema types and composition badges.
-- **Diagnostics** — Prim, face, and vertex counts collected automatically when a stage is loaded (stored in a temporary report so source folders stay clean).
-- **Analysis** — Structured mesh-overlap findings from **Find Overlaps**.
-- **Log** — Color-coded live output from the optimization worker process.
+- **Analysis** — Appears when **Find Overlaps** produces structured mesh-overlap findings.
+- **Log** — Shows startup and scope messages when a run begins, then appends the worker log tail (up to 80 lines), diagnostic output, or structured operation results once the worker process exits.
 
 ### Shortcuts
 
@@ -29,36 +28,40 @@ Launch the app with `usdopt-gui.cmd` (portable release) or `uv run usdopt-gui` (
 
 ## Using the CLI
 
-Run `.\usdopt.cmd` from the portable folder or `uv run usdopt` from a source checkout.
+In PowerShell, use `.\usdopt.cmd` from the extracted portable folder (or `uv run usdopt` from a source checkout):
 
 ```powershell
 # Check runtime environment and operation discovery
-usdopt doctor
+.\usdopt.cmd doctor
 
 # Optimize a single USD stage (defaults to --preset safe_publish; use --dry-run to validate only)
-usdopt optimize --input "C:\path\asset.usda" --output "C:\path\asset.opt.usda" --force
+.\usdopt.cmd optimize --input "C:\path\asset.usda" --output "C:\path\asset.opt.usda" --force
 
 # Run a read-only overlap check and write a JSON report
-usdopt optimize --input "C:\path\asset.usda" --preset find_overlaps
+.\usdopt.cmd optimize --input "C:\path\asset.usda" --preset find_overlaps
 
 # Optimize multiple files into one directory
-usdopt batch --input "C:\path\a.usda" --input "C:\path\b.usda" --output-dir "C:\path\out" --preset safe_publish
+.\usdopt.cmd batch --input "C:\path\a.usda" --input "C:\path\b.usda" --output-dir "C:\path\out" --preset safe_publish
 
 # Inspect available presets (add --all to include developer presets) and operations
-usdopt list-presets
-usdopt show-preset safe_publish
-usdopt list-ops
+.\usdopt.cmd list-presets
+.\usdopt.cmd show-preset safe_publish
+.\usdopt.cmd list-ops
 ```
 
-### Reports
+### Reports and logs
 
-Every CLI run writes `<output>.report.json` and `<output>.log` recording the normalized `prim_paths` (empty for whole-stage runs), executed `operations`, structured `operation_results`, duration, and warnings.
+- **Write jobs** (`safe_publish`, `geometry_optimization`) write the optimized USD file, `<output>.report.json`, and `<output>.log`.
+- **Read-only jobs** (`diagnostics`, `find_overlaps`) and `--dry-run` jobs write `<output>.report.json` only (no USD derivative or `.log` file is written).
+- **Inspection commands** (`doctor`, `list-presets`, `show-preset`, `list-ops`, `report-summary`) print to stdout without writing report or log files.
+
+Each `<output>.report.json` records the normalized `prim_paths` (empty for whole-stage runs), executed `operations`, structured `operation_results`, duration, and warnings.
 
 To summarize a directory of JSON reports as a text table or JSON payload:
 
 ```powershell
-usdopt report-summary --reports-dir reports/smoke-tests
-usdopt report-summary --reports-dir reports/smoke-tests --json
+.\usdopt.cmd report-summary --reports-dir reports/smoke-tests
+.\usdopt.cmd report-summary --reports-dir reports/smoke-tests --json
 ```
 
-Read-only presets (`diagnostics`, `find_overlaps`) write a report JSON without exporting a USD file, so their output file size appears as `missing` in the summary table.
+Because read-only presets (`diagnostics`, `find_overlaps`) do not export a USD file, their output file size appears as `missing` in the summary table.

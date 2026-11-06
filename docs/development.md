@@ -32,7 +32,7 @@ uv run usdopt-gui
 
 - `constants.py`, `runtime_paths.py`, `usd_env.py` — Runtime path discovery, DLL search-path setup, and environment diagnostics.
 - `backend.py` — Validates job settings and builds optimization requests shared by the CLI and GUI.
-- `usd_runner.py` & `runtime_worker.py` — Executes OpenUSD and NVIDIA `usd-optimize` in an isolated worker subprocess (keeping native USD DLLs out of the GUI process) and rebases relative root-layer asset paths when exporting to a different folder.
+- `usd_runner.py` & `runtime_worker.py` — Runs optimization jobs in an isolated worker subprocess and rebases relative root-layer asset paths when exporting to a different folder.
 - `operation_support.py` & `operation_matrix.py` — Classifies all 50 runtime operations and runs isolated per-operation checks (writing `operation-matrix.json`).
 - `gui/` — PySide6 interface (`main_window.py`, `stage_inspection.py`, `scene_graph_view.py`, `report_views.py`, `analysis_view.py`, `log_view.py`, `theme.py`).
 
@@ -53,13 +53,23 @@ uv run pytest
 
 ### Local runtime smoke tests
 
-```powershell
-# Run Safe Cleanup, Inspect Stage, and Find Overlaps against the default fixture (outputs to reports/smoke-tests)
-uv run usdopt smoke-test
+By default, `usdopt smoke-test` uses the sibling `../usd-optimize` checkout's fixture and external asset cache, or you can pass paths from this repository explicitly:
 
-# Run against the 7 checksum-pinned OpenUSD tutorial assets (populated in ../usd-optimize/.cache/usd-assets)
-uv run usdopt smoke-test --external-assets
-uv run usdopt smoke-test --external-assets --preset safe_publish
+```powershell
+# Run Safe Cleanup, Inspect Stage, and Find Overlaps against a checked-in fixture (outputs to reports/smoke-tests)
+uv run usdopt smoke-test --input tests/fixtures/teapot/teapot.usd
+
+# Download the 7 checksum-pinned OpenUSD tutorial assets and run the external asset suite
+uv run python tools/release_smoke/download_external_assets.py `
+  --manifest tools/release_smoke/external_usd_assets.json `
+  --assets-dir .cache/release-smoke-assets
+uv run usdopt smoke-test --external-assets `
+  --asset-manifest tools/release_smoke/external_usd_assets.json `
+  --assets-dir .cache/release-smoke-assets
+uv run usdopt smoke-test --external-assets `
+  --asset-manifest tools/release_smoke/external_usd_assets.json `
+  --assets-dir .cache/release-smoke-assets `
+  --preset safe_publish
 
 # Run every supported/advanced operation in isolation against the teapot fixture (add --all for parameterized/GPU/internal ops)
 uv run usdopt operation-matrix --input tests/fixtures/teapot/teapot.usd --strict
@@ -75,7 +85,7 @@ uv run python tools/release_smoke/windows_package_smoke.py `
   --overlap-fixture-usd tests/fixtures/mcusd/McUsd.usda
 ```
 
-To include the 42-run external asset matrix, download the pinned assets with `tools/release_smoke/download_external_assets.py` and pass `--external-asset-manifest`, `--external-assets-dir`, and `--external-operation-matrix`.
+To include the 42-run external asset matrix, pass `--external-asset-manifest tools/release_smoke/external_usd_assets.json`, `--external-assets-dir .cache/release-smoke-assets`, and `--external-operation-matrix`.
 
 ---
 
@@ -113,5 +123,5 @@ uv run python tools\build_windows_portable.py `
 ### GitHub Actions workflows
 
 - **CI** (`.github/workflows/ci.yml`) — Runs Ruff, script compilation checks, and pytest (including teapot and McUsd fixture checks) on every push to `main` and pull request.
-- **Windows portable release** (`.github/workflows/windows-portable-release.yml`) — Triggered on `v*` tags or manual dispatch. Caches/downloads the NVIDIA v1.4.0 runtime, builds and smoke-tests the portable package, uploads the workflow artifact, and attaches the `.zip` and `.zip.sha256` to tagged GitHub Releases.
+- **Windows portable release** (`.github/workflows/windows-portable-release.yml`) — Triggered on `v*` tags or manual dispatch. Caches/downloads the NVIDIA v1.4.0 runtime, builds and smoke-tests the portable package, and uploads the workflow artifact. When run on a `v*` tag ref (rather than a branch dispatch), it also attaches the `.zip` and `.zip.sha256` to the GitHub Release.
 - **Windows release package smoke** (`.github/workflows/windows-release-package-smoke.yml`) — Manual workflow that validates an upstream NVIDIA release ZIP against the focused smoke suite and optional 42-run external asset matrix.
