@@ -18,6 +18,8 @@ The bundled NVIDIA `usd-optimize` v1.4.0 runtime registers 50 operations. Becaus
 
 The four user-facing presets are **Safe Cleanup** (`safe_publish`), **Geometry Optimization** (`geometry_optimization`), **Inspect Stage** (`diagnostics`), and **Find Overlaps** (`find_overlaps`). The remaining presets are developer-only (`usdopt list-presets --all`).
 
+In the supported presets, `optimizePrimvars` indexes and simplifies primvars without removing bound data, `optimizeTimeSamples` strips only exact duplicate samples (interpolation removal disabled), and `findOverlappingMeshes` runs with `useGpu: false` for deterministic CPU behavior.
+
 | Operation | What it does | Tier | Bundled preset(s) |
 | --- | --- | --- | --- |
 | `computeExtents` | Computes and authors mesh `extents`. | Supported (writes USD) | Safe Cleanup, Geometry Optimization, Animated Cleanup Comparison, Prototype Rewrite Test |
