@@ -8,19 +8,21 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QFrame,
+    QHBoxLayout,
     QLabel,
     QMainWindow,
     QMessageBox,
+    QPushButton,
     QSizePolicy,
     QSplitter,
     QStackedLayout,
-    QStyle,
     QVBoxLayout,
     QWidget,
 )
 
 from usd_optimize_app.backend import get_environment_status
 from usd_optimize_app.constants import SUPPORTED_USD_EXTENSIONS
+from usd_optimize_app.gui.icon import create_folder_icon
 from usd_optimize_app.gui.preferences import GuiPreferences
 from usd_optimize_app.gui.results_panel import ResultsPanel
 from usd_optimize_app.gui.theme import APP_STYLE, STATUS_COLOR_BY_KIND
@@ -63,14 +65,13 @@ class MainWindow(QMainWindow):
         )
         self._controller.status_changed.connect(self._set_status)
         self._controller.runtime_changed.connect(self._set_runtime_state)
+        self._runtime_retry_button.clicked.connect(self._controller.refresh_environment_status)
         QShortcut(QKeySequence("Escape"), self, activated=self._controller.cancel_job)
         self._controller.start(restore_session=restore_session)
 
     def _build_shell(self) -> None:
         self._workflow_panel = WorkflowPanel()
-        self._workflow_panel.open_output_button.setIcon(
-            self.style().standardIcon(QStyle.StandardPixmap.SP_DirOpenIcon)
-        )
+        self._workflow_panel.open_output_button.setIcon(create_folder_icon())
         self._results_panel = ResultsPanel()
         self._workspace_splitter = QSplitter(Qt.Orientation.Horizontal)
         self._workspace_splitter.setChildrenCollapsible(False)
@@ -85,6 +86,8 @@ class MainWindow(QMainWindow):
         self._runtime_blocker_detail = QLabel()
         self._runtime_blocker_detail.setObjectName("RuntimeBlockerDetail")
         self._runtime_blocker_detail.setWordWrap(True)
+        self._runtime_retry_button = QPushButton("Retry runtime check")
+        self._runtime_retry_button.setToolTip("Re-check the portable USD Optimize runtime")
         self._runtime_blocker = self._build_runtime_blocker()
         self._content_stack = QStackedLayout()
         self._content_stack.addWidget(self._workspace_splitter)
@@ -111,11 +114,19 @@ class MainWindow(QMainWindow):
         panel = QFrame()
         panel.setObjectName("RuntimeBlocker")
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(40, 40, 40, 40)
-        layout.setSpacing(8)
+        layout.setContentsMargins(48, 40, 48, 40)
+        layout.setSpacing(12)
         layout.addStretch(1)
+        caption = QLabel("ENVIRONMENT CHECK")
+        caption.setObjectName("StatusCaption")
+        layout.addWidget(caption)
         layout.addWidget(self._runtime_blocker_title)
         layout.addWidget(self._runtime_blocker_detail)
+        retry_row = QHBoxLayout()
+        retry_row.setContentsMargins(0, 8, 0, 0)
+        retry_row.addWidget(self._runtime_retry_button)
+        retry_row.addStretch(1)
+        layout.addLayout(retry_row)
         layout.addStretch(1)
         return panel
 
@@ -127,7 +138,8 @@ class MainWindow(QMainWindow):
         else:
             self._runtime_blocker_detail.setText(
                 f"{details}\n\n"
-                "Extract or reinstall the portable USD Optimize package, then reopen the app."
+                "Extract or reinstall the portable USD Optimize package, "
+                "then click Retry runtime check."
             )
             self._workspace_splitter.setEnabled(False)
             self._content_stack.setCurrentWidget(self._runtime_blocker)
@@ -160,16 +172,28 @@ class MainWindow(QMainWindow):
             f"Completed in {result.duration_seconds:.1f}s.",
         )
 
+    def _set_drag_active(self, active: bool) -> None:
+        self._workflow_panel.setProperty("dragActive", active)
+        self._workflow_panel.style().unpolish(self._workflow_panel)
+        self._workflow_panel.style().polish(self._workflow_panel)
+
     def dragEnterEvent(self, event) -> None:  # noqa: N802
         """Accept a local USD file dropped anywhere on the application shell."""
         if any(
             url.isLocalFile() and Path(url.toLocalFile()).suffix.lower() in SUPPORTED_USD_EXTENSIONS
             for url in event.mimeData().urls()
         ):
+            self._set_drag_active(True)
             event.acceptProposedAction()
+
+    def dragLeaveEvent(self, event) -> None:  # noqa: N802
+        """Clear drag highlight when a dragged file leaves the window."""
+        self._set_drag_active(False)
+        super().dragLeaveEvent(event)
 
     def dropEvent(self, event) -> None:  # noqa: N802
         """Commit the first supported local USD file dropped on the shell."""
+        self._set_drag_active(False)
         for url in event.mimeData().urls():
             if not url.isLocalFile():
                 continue

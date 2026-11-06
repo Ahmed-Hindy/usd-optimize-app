@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFormLayout, QToolButton
+from PySide6.QtWidgets import QAbstractItemView, QFormLayout, QToolButton
 
+from usd_optimize_app.gui.icon import create_folder_icon
 from usd_optimize_app.gui.main_window import MainWindow
 
 
@@ -69,3 +70,21 @@ def test_title_and_layout_fit_supported_window(window: MainWindow) -> None:
     assert window.windowTitle().startswith("USD Optimize Tool -- ")
     assert minimum_size.width() <= 960
     assert minimum_size.height() <= 680
+
+
+def test_folder_icon_and_diagnostic_table_read_only_config(window: MainWindow) -> None:
+    folder_icon = create_folder_icon()
+    results = window._results_panel
+    workflow = window._workflow_panel
+
+    assert not folder_icon.isNull()
+    assert not folder_icon.pixmap(16, 16).isNull()
+    assert workflow.input_state_label.isHidden()
+    assert (
+        results.diagnostic_table.editTriggers()
+        == QAbstractItemView.EditTrigger.NoEditTriggers
+    )
+    assert (
+        results.diagnostic_table.selectionMode()
+        == QAbstractItemView.SelectionMode.NoSelection
+    )

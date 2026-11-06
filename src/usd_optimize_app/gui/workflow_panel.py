@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtGui import QColor, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
@@ -34,7 +34,7 @@ FILE_DIALOG_FILTER = "USD Files (*.usd *.usda *.usdc);;All Files (*)"
 class WorkflowFormState:
     """The visible workflow-form state supplied by the coordinator."""
 
-    input_message: str = "Choose a USD file to inspect the stage."
+    input_message: str = ""
     input_kind: str = "neutral"
     run_enabled: bool = False
     running: bool = False
@@ -110,9 +110,22 @@ class WorkflowPanel(QFrame):
             item = QListWidgetItem(label)
             item.setToolTip(tooltip)
             item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+            if "skipped for selected scope" in label:
+                item.setForeground(QColor(STATUS_COLOR_BY_KIND["warning"]))
             self.operation_list.addItem(item)
+        self._sync_operation_list_height()
         enabled = not is_diagnostic and not self._running
         self.output_edit.setEnabled(enabled)
+        self.output_edit.setPlaceholderText(
+            "Not used for diagnostic workflows"
+            if is_diagnostic
+            else "Output path is based on the source file"
+        )
+        self.output_edit.setToolTip(
+            "Diagnostic workflows analyze the stage without writing an output USD file."
+            if is_diagnostic
+            else "Destination path for the optimized USD file."
+        )
         self.output_browse_button.setEnabled(enabled)
         self.open_output_button.setEnabled(enabled)
 
@@ -120,13 +133,19 @@ class WorkflowPanel(QFrame):
         """Render input readiness and the run/cancel control state."""
         self._running = state.running
         is_success = state.input_kind == "success"
-        self.input_state_label.setVisible(not is_success)
-        self.input_state_label.setText("" if is_success else f"● {state.input_message}")
+        show_inline_state = not is_success and bool(state.input_message)
+        self.input_state_label.setVisible(show_inline_state)
+        self.input_state_label.setText(f"● {state.input_message}" if show_inline_state else "")
         self.input_state_label.setToolTip(state.input_message)
         color = STATUS_COLOR_BY_KIND.get(state.input_kind, STATUS_COLOR_BY_KIND["neutral"])
         self.input_state_label.setStyleSheet(f"color: {color};")
 
         self.run_button.setText("Cancel workflow" if state.running else "Run workflow")
+        self.run_button.setToolTip(
+            "Cancel the active workflow (Esc)"
+            if state.running
+            else "Run the selected workflow (Ctrl+Enter)"
+        )
         self.run_button.setDefault(not state.running)
         self.run_button.setEnabled(state.running or state.run_enabled)
         self.job_progress.setVisible(state.running)
@@ -156,24 +175,34 @@ class WorkflowPanel(QFrame):
     def _build_widgets(self) -> None:
         self._running = False
         self.input_edit = QLineEdit()
-        self.input_edit.setPlaceholderText("Choose a USD file")
-        self.input_edit.setToolTip("Enter a local .usd, .usda, or .usdc path.")
+        self.input_edit.setPlaceholderText("Choose a USD file or drop it here")
+        self.input_edit.setToolTip(
+            "Enter or drop a local .usd, .usda, or .usdc path, then press Enter."
+        )
         self.output_edit = QLineEdit()
         self.output_edit.setPlaceholderText("Output path is based on the source file")
+        self.output_edit.setToolTip("Destination path for the optimized USD file.")
         self.workflow_combo = NoWheelComboBox()
+        self.workflow_combo.setToolTip("Choose an optimization or diagnostic workflow.")
         self._configure_expanding_combo(self.workflow_combo)
         self.description_label = self._wrapped_label()
         self.description_label.setObjectName("SectionHint")
         self.operation_list = QListWidget()
         self.operation_list.setSelectionMode(QListWidget.SelectionMode.NoSelection)
         self.operation_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.operation_list.setMinimumHeight(104)
-        self.operation_list.setMaximumHeight(180)
-        self.input_state_label = self._wrapped_label("Choose a USD file to inspect the stage.")
+        self.operation_list.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.operation_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.operation_list.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        self.input_state_label = self._wrapped_label("")
         self.input_state_label.setObjectName("InlineState")
+        self.input_state_label.setVisible(False)
         self.input_browse_button = QPushButton("Browse")
+        self.input_browse_button.setToolTip("Browse for a source USD file (Ctrl+O)")
         self.input_browse_button.setMaximumWidth(100)
         self.output_browse_button = QPushButton("Browse")
+        self.output_browse_button.setToolTip("Choose output USD file path")
         self.output_browse_button.setMaximumWidth(100)
         self.open_output_button = QToolButton()
         self.open_output_button.setObjectName("OpenOutputButton")
@@ -182,8 +211,9 @@ class WorkflowPanel(QFrame):
         self.open_output_button.setFixedSize(34, 34)
         self.run_button = QPushButton("Run workflow")
         self.run_button.setObjectName("PrimaryButton")
+        self.run_button.setToolTip("Run the selected workflow (Ctrl+Enter)")
         self.run_button.setDefault(True)
-        self.run_button.setMinimumSize(120, 34)
+        self.run_button.setMinimumSize(132, 34)
         self.job_state_label = QLabel()
         self.job_state_label.setVisible(False)
         self.job_progress = QProgressBar()
@@ -191,8 +221,8 @@ class WorkflowPanel(QFrame):
 
     def _build_layout(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 15, 16, 16)
-        layout.setSpacing(14)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(16)
         layout.addLayout(
             self._section_heading(
                 "Create an optimized USD copy",
@@ -202,12 +232,15 @@ class WorkflowPanel(QFrame):
         form = QFormLayout()
         self.form_layout = form
         form.setContentsMargins(0, 0, 0, 0)
-        form.setSpacing(10)
-        form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
+        form.setHorizontalSpacing(14)
+        form.setVerticalSpacing(14)
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
 
         input_stack = QVBoxLayout()
+        input_stack.setContentsMargins(0, 0, 0, 0)
         input_stack.setSpacing(4)
         input_row = QHBoxLayout()
+        input_row.setSpacing(8)
         input_row.addWidget(self.input_edit)
         input_row.addWidget(self.input_browse_button)
         input_stack.addLayout(input_row)
@@ -216,11 +249,12 @@ class WorkflowPanel(QFrame):
         self.workflow_field_widget = QWidget()
         workflow_stack = QVBoxLayout(self.workflow_field_widget)
         workflow_stack.setContentsMargins(0, 0, 0, 0)
-        workflow_stack.setSpacing(5)
+        workflow_stack.setSpacing(6)
         workflow_stack.addWidget(self.workflow_combo)
         workflow_stack.addWidget(self.description_label)
 
         output_row = QHBoxLayout()
+        output_row.setSpacing(8)
         self.output_row = output_row
         output_row.addWidget(self.output_edit)
         output_row.addWidget(self.output_browse_button)
@@ -231,16 +265,45 @@ class WorkflowPanel(QFrame):
         form.addRow(self._field_label("OUTPUT USD"), output_row)
         layout.addLayout(form)
 
+        steps_stack = QVBoxLayout()
+        steps_stack.setContentsMargins(0, 2, 0, 0)
+        steps_stack.setSpacing(6)
         operations_label = QLabel("WORKFLOW STEPS")
         operations_label.setObjectName("StatusCaption")
-        layout.addWidget(operations_label)
-        layout.addWidget(self.operation_list, stretch=1)
+        operations_label.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
+        )
+        steps_stack.addWidget(operations_label)
+        steps_stack.addWidget(self.operation_list)
+        layout.addLayout(steps_stack)
+
+        layout.addStretch(1)
+
+        footer_stack = QVBoxLayout()
+        footer_stack.setContentsMargins(0, 0, 0, 0)
+        footer_stack.setSpacing(10)
+        footer_rule = QFrame()
+        footer_rule.setObjectName("SectionRule")
+        footer_rule.setFrameShape(QFrame.Shape.HLine)
+        footer_rule.setFrameShadow(QFrame.Shadow.Plain)
+        footer_stack.addWidget(footer_rule)
+        footer_stack.addWidget(self.job_progress)
         button_row = QHBoxLayout()
+        button_row.setContentsMargins(0, 0, 0, 0)
         button_row.addWidget(self.job_state_label)
         button_row.addStretch(1)
         button_row.addWidget(self.run_button)
-        layout.addWidget(self.job_progress)
-        layout.addLayout(button_row)
+        footer_stack.addLayout(button_row)
+        layout.addLayout(footer_stack)
+
+    def _sync_operation_list_height(self) -> None:
+        count = max(self.operation_list.count(), 1)
+        row_height = self.operation_list.sizeHintForRow(0)
+        if row_height <= 0:
+            row_height = 33
+        frame = self.operation_list.frameWidth() * 2
+        target_height = min(max(count * row_height + frame + 2, 35), 200)
+        self.operation_list.setFixedHeight(target_height)
 
     def _connect_signals(self) -> None:
         self.input_edit.textEdited.connect(self.input_edited)
@@ -299,29 +362,35 @@ class WorkflowPanel(QFrame):
     def _wrapped_label(text: str = "") -> QLabel:
         label = QLabel(text)
         label.setWordWrap(True)
-        label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Maximum)
         return label
 
     @staticmethod
     def _field_label(text: str) -> QLabel:
         label = QLabel(text)
         label.setObjectName("FieldLabel")
+        label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         return label
 
     @staticmethod
     def _section_heading(title: str, hint: str) -> QVBoxLayout:
         layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
         title_label = QLabel(title)
         title_label.setObjectName("SectionTitle")
+        title_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         hint_label = QLabel(hint)
         hint_label.setObjectName("SectionHint")
         hint_label.setWordWrap(True)
+        hint_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         layout.addWidget(title_label)
         layout.addWidget(hint_label)
+        layout.addSpacing(4)
         rule = QFrame()
         rule.setObjectName("SectionRule")
         rule.setFrameShape(QFrame.Shape.HLine)
         rule.setFrameShadow(QFrame.Shadow.Plain)
         layout.addWidget(rule)
         return layout
+

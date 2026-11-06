@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, Qt
+from PySide6.QtCore import QEvent, QPointF, Qt
+from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QComboBox, QListView, QSizePolicy
 
 COMBO_POPUP_OBJECT_NAME = "ComboBoxPopup"
@@ -54,3 +55,29 @@ class NoWheelComboBox(QComboBox):
             event.ignore()
             return
         super().wheelEvent(event)
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        """Render the combo box with an explicit chevron affordance."""
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        if not self.isEnabled():
+            chevron_color = QColor("#6f7479")
+        elif self.underMouse() or self.hasFocus():
+            chevron_color = QColor("#f2eee5")
+        else:
+            chevron_color = QColor("#9e9a91")
+        pen = QPen(chevron_color, 1.6)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+
+        center_x = self.width() - 15.0
+        center_y = self.height() / 2.0
+        chevron = QPainterPath()
+        chevron.moveTo(QPointF(center_x - 4.0, center_y - 1.8))
+        chevron.lineTo(QPointF(center_x, center_y + 2.2))
+        chevron.lineTo(QPointF(center_x + 4.0, center_y - 1.8))
+        painter.drawPath(chevron)
+        painter.end()
+

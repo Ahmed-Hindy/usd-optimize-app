@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import QHeaderView, QTreeWidget, QTreeWidgetItem
 
 from usd_optimize_app.backend import SceneGraphNode
@@ -17,8 +18,15 @@ def configure_scene_tree(tree: QTreeWidget) -> None:
     tree.setUniformRowHeights(True)
     tree.setRootIsDecorated(True)
     tree.setSelectionMode(QTreeWidget.SelectionMode.ExtendedSelection)
-    tree.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-    tree.header().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+    header = tree.header()
+    header.setStretchLastSection(False)
+    header.setMinimumSectionSize(96)
+    header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+    header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+    header_item = tree.headerItem()
+    if header_item is not None:
+        header_item.setTextAlignment(0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        header_item.setTextAlignment(1, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
 
 def populate_scene_tree(tree: QTreeWidget, roots: tuple[SceneGraphNode, ...]) -> None:
@@ -42,6 +50,15 @@ def selected_prim_paths(tree: QTreeWidget) -> tuple[str, ...]:
 def _build_item(node: SceneGraphNode) -> QTreeWidgetItem:
     item = QTreeWidgetItem((node.name or node.path, node.type_name))
     item.setData(0, Qt.ItemDataRole.UserRole, node.path)
+    item.setForeground(1, QColor("#9e9a91"))
+
+    if not node.is_active or not node.is_loaded:
+        muted_color = QColor("#6f7479")
+        italic_font = QFont(item.font(0))
+        italic_font.setItalic(True)
+        for col in (0, 1):
+            item.setForeground(col, muted_color)
+            item.setFont(col, italic_font)
 
     markers = []
     if node.has_payload:
@@ -61,3 +78,4 @@ def _build_item(node: SceneGraphNode) -> QTreeWidgetItem:
     for child in node.children:
         item.addChild(_build_item(child))
     return item
+
