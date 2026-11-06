@@ -53,6 +53,12 @@ OPERATION_SUPPORT = {
         "write",
         "Recomputes authored bounds without changing topology or hierarchy.",
     ),
+    "conformMeshes": _support(
+        "conformMeshes",
+        "advanced",
+        "write",
+        "Modifies normals, UVs, primvars, and doubleSided attributes so meshes can be merged.",
+    ),
     "countVertices": _support(
         "countVertices",
         "advanced",
@@ -172,6 +178,12 @@ OPERATION_SUPPORT = {
         "advanced",
         "write",
         "Combines prims and changes hierarchy, topology, and materials.",
+    ),
+    "mergePhysicsBodyMeshes": _support(
+        "mergePhysicsBodyMeshes",
+        "advanced",
+        "write",
+        "Merges visual and collision meshes within rigid bodies and changes scene hierarchy.",
     ),
     "mergeVertices": _support(
         "mergeVertices",

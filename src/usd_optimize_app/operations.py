@@ -7,6 +7,7 @@ from dataclasses import dataclass
 OPERATION_DLL_NAMES = {
     "boxClip": "boxClip.dll",
     "computeExtents": "computeExtents.dll",
+    "conformMeshes": "conformMeshes.dll",
     "countVertices": "countVertices.dll",
     "decimateMeshes": "decimateMeshes.dll",
     "deduplicateGeometry": "deduplicateGeometry.dll",
@@ -26,6 +27,7 @@ OPERATION_DLL_NAMES = {
     "generateScene": "generateScene.dll",
     "manifoldMeshes": "manifoldMeshes.dll",
     "merge": "merge.dll",
+    "mergePhysicsBodyMeshes": "mergePhysicsBodyMeshes.dll",
     "mergeVertices": "mergeVertices.dll",
     "meshCleanup": "meshCleanup.dll",
     "optimizeMaterials": "optimizeMaterials.dll",

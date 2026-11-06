@@ -6,12 +6,12 @@ on:
       usd_optimize_release_tag:
         description: "NVIDIA usd-optimize release tag"
         required: true
-        default: "v1.2.1"
+        default: "v1.4.0"
         type: string
       usd_optimize_asset_pattern:
         description: "Windows CPython 3.12 release asset pattern"
         required: true
-        default: "*usd_25.11_py_3.12@*.windows-x86_64.release.zip"
+        default: "*usd_26.08_py_3.12@*.windows-x86_64.release.zip"
         type: string
   push:
     tags:
@@ -21,8 +21,8 @@ permissions:
   contents: write
 
 env:
-  USD_OPTIMIZE_RELEASE_TAG: ${{ inputs.usd_optimize_release_tag || 'v1.2.1' }}
-  USD_OPTIMIZE_ASSET_PATTERN: ${{ inputs.usd_optimize_asset_pattern || '*usd_25.11_py_3.12@*.windows-x86_64.release.zip' }}
+  USD_OPTIMIZE_RELEASE_TAG: ${{ inputs.usd_optimize_release_tag || 'v1.4.0' }}
+  USD_OPTIMIZE_ASSET_PATTERN: ${{ inputs.usd_optimize_asset_pattern || '*usd_26.08_py_3.12@*.windows-x86_64.release.zip' }}
 
 jobs:
   package:
@@ -56,7 +56,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ${{ runner.temp }}\usd-optimize-release
-          key: usd-optimize-${{ runner.os }}-${{ env.USD_OPTIMIZE_RELEASE_TAG }}-usd25.11-py3.12
+          key: usd-optimize-${{ runner.os }}-${{ env.USD_OPTIMIZE_RELEASE_TAG }}-usd26.08-py3.12
 
       - name: Download NVIDIA usd-optimize runtime
         id: runtime

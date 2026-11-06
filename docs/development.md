@@ -66,11 +66,11 @@ For the broader external asset suite, prepare the cache in the sibling `usd-opti
 uv run usdopt smoke-test --external-assets
 ```
 
-See [external asset smoke tests](external-asset-smoke-tests.md) for the cache and manifest details, [operational smoke tests](operational-smoke-tests.md) for the recorded validation procedure, and [operation support](operation-support.md) for the 48-operation product classification.
+See [external asset smoke tests](external-asset-smoke-tests.md) for the cache and manifest details, [operational smoke tests](operational-smoke-tests.md) for the recorded validation procedure, and [operation support](operation-support.md) for the 50-operation product classification.
 
 ## Developer operations
 
-The NVIDIA runtime registers 48 operations. Most change topology or hierarchy,
+The NVIDIA runtime registers 50 operations. Most change topology or hierarchy,
 depend on hardware, or require asset-specific parameters, so they are available
 through developer presets and the operation matrix rather than general GUI controls.
 

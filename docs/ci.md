@@ -36,7 +36,7 @@ uv run usdopt smoke-test
 The default runtime location is:
 
 ```text
-../usd-optimize/.artifacts/usd-optimize-v1.2.1-windows-25.11-py3.12/release-runtime
+../usd-optimize/.artifacts/usd-optimize-v1.4.0-windows-26.08-py3.12/release-runtime
 ```
 
 That artifact is local machine state, not part of this repository. The separate
@@ -47,7 +47,7 @@ manual release-package workflow below covers the published NVIDIA package.
 `.github/workflows/windows-release-package-smoke.yml` is a manual workflow
 that downloads exactly one public NVIDIA release ZIP, validates it in isolated
 Python processes, and uploads the full log as an artifact. Its defaults target
-`v1.2.1`, OpenUSD 25.11, and CPython 3.12.
+`v1.4.0`, OpenUSD 26.08, and CPython 3.12.
 
 The checked-in runner verifies package structure, MaterialX plugin and shader loading,
 `pxr`, operation registry
@@ -61,12 +61,12 @@ Local focused invocation does not download external assets:
 
 ```powershell
 uv run python tools/release_smoke/windows_package_smoke.py `
-  --package-archive C:\path\to\usd_optimize_usd_25.11_py_3.12@1.2.1.1-2-1.1193.bec04ac2.gl.windows-x86_64.release.zip `
+  --package-archive C:\path\to\usd_optimize_usd_26.08_py_3.12@1.4.0.1-4-0.1799.aca426ac.gl.windows-x86_64.release.zip `
   --overlap-fixture-usd tests/fixtures/mcusd/McUsd.usda
 ```
 
 ## Windows portable release
 
-`.github/workflows/windows-portable-release.yml` creates the end-user ZIP. It runs manually and for version tags, caches the upstream NVIDIA archive, installs the locked application dependencies into a copied CPython 3.12 distribution, and bundles `usd-optimize` v1.2.1.
+`.github/workflows/windows-portable-release.yml` creates the end-user ZIP. It runs manually and for version tags, caches the upstream NVIDIA archive, installs the locked application dependencies into a copied CPython 3.12 distribution, and bundles `usd-optimize` v1.4.0.
 
 The assembled directory is validated before compression. The workflow runs `doctor`, lists the packaged user presets, constructs the GUI on both the offscreen and native Windows platforms, then runs the shared smoke harness across Safe Cleanup, Inspect Stage, and Find Overlaps. Safe Cleanup must preserve geometry, transforms, stage metrics, and relocated dependencies. It uploads the ZIP, its SHA-256 checksum, and `manifest.json`; tagged builds are also attached to the GitHub release.

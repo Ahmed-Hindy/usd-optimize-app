@@ -7,6 +7,7 @@ from usd_optimize_app.operation_support import (
 EXPECTED_RUNTIME_OPERATIONS = {
     "boxClip",
     "computeExtents",
+    "conformMeshes",
     "countVertices",
     "decimateMeshes",
     "deduplicateGeometry",
@@ -27,6 +28,7 @@ EXPECTED_RUNTIME_OPERATIONS = {
     "generateScene",
     "manifoldMeshes",
     "merge",
+    "mergePhysicsBodyMeshes",
     "mergeVertices",
     "meshCleanup",
     "moveMaterials",

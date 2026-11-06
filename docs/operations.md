@@ -1,11 +1,12 @@
 # Runtime Operations Reference
 
-The bundled NVIDIA `usd-optimize` 1.2.1 runtime registers 48 operations. The
+The bundled NVIDIA `usd-optimize` 1.4.0 runtime registers 50 operations. The
 **What it does** text has been verified against NVIDIA's official [Scene
 Optimizer operations documentation](https://docs.omniverse.nvidia.com/extensions/latest/ext_scene-optimizer/operations.html)
 and, for operations not published on that page, the operation description in
-the previously reviewed NVIDIA 1.1.0 source checkout. The added `moveMaterials`
-entry follows the shipped 1.2.1 changelog. This reference describes
+the previously reviewed NVIDIA 1.1.0 source checkout. The added `moveMaterials`,
+`conformMeshes`, and `mergePhysicsBodyMeshes` entries follow the shipped 1.2.1
+and 1.4.0 changelogs. This reference describes
 the operation's behavior, not this app's safety policy.
 
 `executionContext`, which appears in every preset, is not an operation in this
@@ -38,6 +39,7 @@ developer-only and appear with `usdopt list-presets --all`.
 | Operation | What it does | Support |
 | --- | --- | --- |
 | `boxClip` | Clips selected content to an explicit box. | Requires configuration; writes USD |
+| `conformMeshes` | Makes meshes that `merge` would group together compatible by reconciling normals, UVs, primvars, and `doubleSided`. | Advanced; writes USD |
 | `countVertices` | Reports prims with excessive vertex counts. | Advanced; writes USD |
 | `deduplicateHierarchies` | Finds duplicate prim hierarchies and replaces duplicates with instanceable internal references to a prototype. | Advanced; writes USD |
 | `deleteHiddenPrims` | Deletes prims that are constantly hidden. | Advanced; writes USD |
@@ -53,6 +55,7 @@ developer-only and appear with `usdopt list-presets --all`.
 | `generateProjectionUVs` | Generates UVs with an explicit projection mode. | Requires configuration; writes USD |
 | `generateScene` | Provides a test/helper scene-generation operation. | Internal; writes USD |
 | `manifoldMeshes` | Repairs mesh topology to make meshes manifold. | Advanced; writes USD |
+| `mergePhysicsBodyMeshes` | Merges compatible visual and collision meshes within each rigid body while preserving body, joint, and articulation frames. | Advanced; writes USD |
 | `mergeVertices` | Merges vertices using a configured tolerance. | Advanced; writes USD |
 | `meshCleanup` | Cleans meshes, for example by merging nearby vertices, removing degenerate faces, making meshes manifold, or removing isolated vertices. | Advanced; writes USD |
 | `optimizeSkelRoots` | Merges meshes attached to a skeleton to optimize GPU skinning computation. | Advanced; writes USD |

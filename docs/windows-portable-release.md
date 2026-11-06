@@ -40,21 +40,21 @@ usd-optimize-app-<version>-windows-x86_64/
 10. creates a maximum-deflate ZIP and SHA-256 checksum;
 11. uploads the workflow artifact and attaches tagged builds to a GitHub release.
 
-The workflow defaults to NVIDIA `usd-optimize` v1.2.1, OpenUSD 25.11, and CPython 3.12.
+The workflow defaults to NVIDIA `usd-optimize` v1.4.0, OpenUSD 26.08, and CPython 3.12.
 
 ## Local build
 
-Use an already extracted v1.2.1 runtime to avoid another large download:
+Use an already extracted v1.4.0 runtime to avoid another large download:
 
 ```powershell
 $pythonRoot = "C:\Program Files\Python312"
-$runtimeRoot = "..\usd-optimize\.artifacts\usd-optimize-v1.2.1-windows-25.11-py3.12\release-runtime"
+$runtimeRoot = "..\usd-optimize\.artifacts\usd-optimize-v1.4.0-windows-26.08-py3.12\release-runtime"
 
 uv run python tools\build_windows_portable.py `
   --runtime-root $runtimeRoot `
   --python-root $pythonRoot `
   --output-dir dist `
-  --usd-optimize-version 1.2.1 `
+  --usd-optimize-version 1.4.0 `
   --usd-optimize-license ..\usd-optimize\LICENSE `
   --smoke-input tests\fixtures\teapot\teapot.usd
 ```

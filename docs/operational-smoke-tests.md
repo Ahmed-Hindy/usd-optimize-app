@@ -7,15 +7,15 @@ This file records the current operational checks for `usd-optimize-app` against 
 The app defaults to this runtime artifact:
 
 ```text
-../usd-optimize/.artifacts/usd-optimize-v1.2.1-windows-25.11-py3.12/release-runtime
+../usd-optimize/.artifacts/usd-optimize-v1.4.0-windows-26.08-py3.12/release-runtime
 ```
 
 Set `USD_OPTIMIZE_RUNTIME_ROOT` to explicitly test another extracted package.
-The current default targets NVIDIA's public 1.2.1 Windows package. Historical
+The current default targets NVIDIA's public 1.4.0 Windows package. Historical
 validation below retains the versions and dates actually tested.
 
 ```text
-usd_optimize_usd_25.11_py_3.12@1.2.1.1-2-1.1193.bec04ac2.gl.windows-x86_64.release.zip
+usd_optimize_usd_26.08_py_3.12@1.4.0.1-4-0.1799.aca426ac.gl.windows-x86_64.release.zip
 ```
 
 ## One-command smoke test
