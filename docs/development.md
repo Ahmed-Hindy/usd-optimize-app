@@ -1,112 +1,127 @@
-# Development Guide 🛠️
+# Development & Packaging Guide
 
-This guide is for developers working from the source checkout. The packaged artifact is the end-user distribution and includes the application runtime.
+## Environment Setup
 
-## Setup
-
-Clone the repository, then install the development environment:
+Install the Python development environment with `uv`:
 
 ```powershell
 uv sync
 ```
 
-The app requires the extracted `usd-optimize` runtime described in the [runtime dependency notes](usd-optimize-source-dependency.md) for local runtime checks. Run the diagnostic command to confirm it is complete:
+For local runtime checks, `usd-optimize-app` expects the extracted NVIDIA `usd-optimize` v1.4.0 (`usd_optimize_usd_26.08_py_3.12@1.4.0.1-4-0.1799.aca426ac.gl.windows-x86_64.release.zip`) package at:
+
+```text
+../usd-optimize/.artifacts/usd-optimize-v1.4.0-windows-26.08-py3.12/release-runtime
+```
+
+Set `USD_OPTIMIZE_RUNTIME_ROOT` to point to another extracted runtime directory containing `python/`, `usdpy/`, `lib/operations/`, and `extraLibs/`. The app fails fast rather than falling back to incomplete runtimes. Verify your setup with:
 
 ```powershell
 uv run usdopt doctor
 ```
 
-## Source checks
-
-```powershell
-uv run ruff check src tests tools/build_windows_portable.py
-uv run pytest
-```
-
-These are the checks run by GitHub Actions. The CLI and GUI share the same backend request and optimization path.
-
-## Source structure
-
-The application is organized by responsibility:
-
-- `backend.py` validates user-facing settings and builds shared optimization requests.
-- `usd_runner.py` owns isolated worker execution, cancellation, logs, and reports.
-- `runtime_worker.py` is the subprocess entry point that imports NVIDIA and OpenUSD code.
-- `operation_support.py` classifies every registered operation for product exposure.
-- `operation_matrix.py` runs isolated developer checks using that classification.
-- `gui/main_window.py` coordinates widgets and user interaction.
-- `gui/stage_inspection.py` owns hierarchy and automatic-diagnostics lifecycles.
-- `gui/analysis_view.py` formats reviewed structured operation findings for artists.
-- `backend.get_gui_workflows()` defines the explicit artist-triggered workflow order.
-- `gui/report_views.py` renders structured diagnostic tables.
-- `gui/scene_graph_view.py` renders the bounded USD prim hierarchy.
-- `gui/log_view.py` renders fixed-width worker output with severity-aware colors.
-- `gui/theme.py` contains the Qt stylesheet and semantic state colors.
-- `formatting.py` contains shared human-readable value formatting.
-
-Keep native USD imports out of GUI presentation modules. New CLI and GUI behavior should enter through the shared backend rather than duplicating execution logic.
-
-Launch the source-checkout GUI with:
+Launch the GUI from source with:
 
 ```powershell
 uv run usdopt-gui
 ```
 
-## Runtime validation
+---
 
-Run the local smoke test after changing runtime-facing code:
+## Architecture Overview
 
-```powershell
-uv run usdopt smoke-test
-```
+- `constants.py`, `runtime_paths.py`, `usd_env.py` — Runtime path discovery, DLL search-path setup, and environment diagnostics.
+- `backend.py` — Validates job settings and builds optimization requests shared by the CLI and GUI.
+- `usd_runner.py` & `runtime_worker.py` — Runs optimization jobs in an isolated worker subprocess and rebases relative root-layer asset paths when exporting to a different folder.
+- `operation_support.py` & `operation_matrix.py` — Classifies all 50 runtime operations and runs isolated per-operation checks (writing `operation-matrix.json`).
+- `gui/` — PySide6 interface (`main_window.py`, `stage_inspection.py`, `scene_graph_view.py`, `report_views.py`, `analysis_view.py`, `log_view.py`, `theme.py`).
 
-For the broader external asset suite, prepare the cache in the sibling `usd-optimize` checkout and then run:
+*(External DCC integrations such as Houdini shelf tools should invoke `usdopt` via `subprocess.run(...)` rather than importing the bundled USD libraries into the host Python process.)*
 
-```powershell
-uv run usdopt smoke-test --external-assets
-```
+---
 
-See [external asset smoke tests](external-asset-smoke-tests.md) for the cache and manifest details, [operational smoke tests](operational-smoke-tests.md) for the recorded validation procedure, and [operation support](operation-support.md) for the 50-operation product classification.
+## Testing & Runtime Validation
 
-## Developer operations
-
-The NVIDIA runtime registers 50 operations. Most change topology or hierarchy,
-depend on hardware, or require asset-specific parameters, so they are available
-through developer presets and the operation matrix rather than general GUI controls.
+### Lint and unit tests (matches CI)
 
 ```powershell
-uv --system-certs run usdopt list-presets --all
-uv --system-certs run usdopt operation-matrix --input tests/fixtures/teapot/teapot.usd
+uv run ruff check src tests tools/build_windows_portable.py
+uv run ruff check --select I tools/release_smoke
+uv run python -m py_compile tools/release_smoke/windows_package_smoke.py tools/release_smoke/download_external_assets.py
+uv run pytest
 ```
 
-The [operation support matrix](operation-support.md) explains each classification.
-The [operations reference](operations.md) maps operations to presets and describes
-their effects.
+### Local runtime smoke tests
 
-## Portable release
+By default, `usdopt smoke-test` uses the sibling `../usd-optimize` checkout's fixture and external asset cache, or you can pass paths from this repository explicitly:
 
-The local and CI packaging procedure is documented in the [Windows portable release guide](windows-portable-release.md). The builder installs the CLI and GUI from the same project package, bundles the NVIDIA runtime, and executes its smoke tests from inside the assembled directory.
+```powershell
+# Run Safe Cleanup, Inspect Stage, and Find Overlaps against a checked-in fixture (outputs to reports/smoke-tests)
+uv run usdopt smoke-test --input tests/fixtures/teapot/teapot.usd
 
-The packaging workflow uses one locked app environment and one NVIDIA runtime
-package. Before archiving, it checks runtime and operation discovery, CLI preset
-discovery, native Windows and offscreen GUI construction, diagnostic operations,
-and Safe Cleanup with a saved USD output.
+# Download the 7 checksum-pinned OpenUSD tutorial assets and run the external asset suite
+uv run python tools/release_smoke/download_external_assets.py `
+  --manifest tools/release_smoke/external_usd_assets.json `
+  --assets-dir .cache/release-smoke-assets
+uv run usdopt smoke-test --external-assets `
+  --asset-manifest tools/release_smoke/external_usd_assets.json `
+  --assets-dir .cache/release-smoke-assets
+uv run usdopt smoke-test --external-assets `
+  --asset-manifest tools/release_smoke/external_usd_assets.json `
+  --assets-dir .cache/release-smoke-assets `
+  --preset safe_publish
 
-`manifest.json` records the bundled application, Python, PySide6, and NVIDIA
-runtime versions. The release includes a `.sha256` file for archive verification.
-Historical archive-size measurements and component sizes are recorded in the
-[portable release guide](windows-portable-release.md#local-build).
+# Run every supported/advanced operation in isolation against the teapot fixture (add --all for parameterized/GPU/internal ops)
+uv run usdopt operation-matrix --input tests/fixtures/teapot/teapot.usd --strict
+```
 
-## Reports and CI
+### Upstream release-package smoke test
 
-See the [report summary guide](report-summary.md) for generated report output. The normal CI workflow runs source checks. The portable-release workflow additionally downloads the NVIDIA package, builds the distributable ZIP, and runs packaged runtime smoke tests.
+`tools/release_smoke/windows_package_smoke.py` validates a raw NVIDIA release ZIP in isolated subprocesses (`pxr`, `usdMtlx` with a self-contained shader definition since the runtime does not bundle the standard MaterialX library, `deletePrims`, CPU `findOverlappingMeshes` on `McUsd.usda`, and `usdOptimize.exe`):
 
-## Related technical notes
+```powershell
+uv run python tools/release_smoke/windows_package_smoke.py `
+  --package-archive C:\path\to\usd_optimize_usd_26.08_py_3.12@1.4.0.1-4-0.1799.aca426ac.gl.windows-x86_64.release.zip `
+  --overlap-fixture-usd tests/fixtures/mcusd/McUsd.usda
+```
 
-- [Runtime dependency](usd-optimize-source-dependency.md)
-- [GUI implementation](gui.md)
-- [Operation support](operation-support.md)
-- [CI details](ci.md)
-- [Windows portable release](windows-portable-release.md)
+To include the 42-run external asset matrix, pass `--external-asset-manifest tools/release_smoke/external_usd_assets.json`, `--external-assets-dir .cache/release-smoke-assets`, and `--external-operation-matrix`.
 
-Keep Houdini integration external for now. A future shelf tool should call the CLI through `subprocess.run(...)` instead of importing NVIDIA USD libraries into Houdini's Python process.
+---
+
+## Portable Windows Build & CI
+
+### Artifact layout
+
+```text
+usd-optimize-app-<version>-windows-x86_64/
+├── usdopt.cmd
+├── usdopt-gui.cmd
+├── manifest.json
+├── README.md
+├── docs/
+├── licenses/
+├── presets/
+├── python/
+└── runtime/usd-optimize/ (python, usdpy, lib/operations, extraLibs)
+```
+
+### Local portable build
+
+`tools/build_windows_portable.py` copies a clean CPython 3.12 distribution, installs locked runtime dependencies, strips unused Qt modules/headers/tests (keeping `QtCore`, `QtGui`, `QtWidgets`, and Windows platform/image plugins), bundles the NVIDIA runtime and `manifest.json`, and runs CLI, GUI (native Windows and offscreen), and workflow smoke tests before zipping:
+
+```powershell
+uv run python tools\build_windows_portable.py `
+  --runtime-root "..\usd-optimize\.artifacts\usd-optimize-v1.4.0-windows-26.08-py3.12\release-runtime" `
+  --python-root "C:\Program Files\Python312" `
+  --output-dir dist `
+  --usd-optimize-version 1.4.0 `
+  --usd-optimize-license ..\usd-optimize\LICENSE `
+  --smoke-input tests\fixtures\teapot\teapot.usd
+```
+
+### GitHub Actions workflows
+
+- **CI** (`.github/workflows/ci.yml`) — Runs Ruff, script compilation checks, and pytest (including teapot and McUsd fixture checks) on every push to `main` and pull request.
+- **Windows portable release** (`.github/workflows/windows-portable-release.yml`) — Triggered on `v*` tags or manual dispatch. Caches/downloads the NVIDIA v1.4.0 runtime, builds and smoke-tests the portable package, and uploads the workflow artifact. When run on a `v*` tag ref (rather than a branch dispatch), it also attaches the `.zip` and `.zip.sha256` to the GitHub Release.
+- **Windows release package smoke** (`.github/workflows/windows-release-package-smoke.yml`) — Manual workflow that validates an upstream NVIDIA release ZIP against the focused smoke suite and optional 42-run external asset matrix.

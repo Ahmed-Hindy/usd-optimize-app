@@ -1,58 +1,67 @@
-# GUI 🎨
+# User & CLI Guide
 
-The PySide6 GUI is the primary interface in the packaged Windows distribution. Download and extract the complete portable artifact, then run `usdopt-gui.cmd`.
+## Using the GUI
 
-## Workflow
+Launch the app with `.\usdopt-gui.cmd` (portable release) or `uv run usdopt-gui` (from source).
 
-1. Choose, type, paste, or drop a local `.usd`, `.usda`, or `.usdc` stage.
-2. Press Enter or leave the input field to inspect the stage and refresh the **Overview** summary.
-3. Optionally select one or more prims in **Scene**. Each selected prim and all of its descendants become the workflow scope; no selection means the entire stage.
-4. Choose **Safe Cleanup**, **Geometry Optimization**, or **Find Overlaps**.
-5. Review the workflow description, operation list, scope, skipped-operation markers, and output path.
-6. Select **Run**.
-7. Start in **Overview** for the current stage, scope, workflow, and latest outcome; open its linked detail view when you need the hierarchy, diagnostics, analysis, or log.
+1. **Open a stage** — Browse, paste a path, or drag and drop a `.usd`, `.usda`, or `.usdc` file into **Input USD**. Press `Enter` (or click away) to load the scene hierarchy, refresh the default output path, and run stage diagnostics. The app remembers the last committed input and output paths across launches.
+2. **Set the scope (optional)** — Select one or more prims in the **Scene** tab (`Ctrl`- or `Shift`-click for multi-select) to target only those prims and all of their descendants (including any descendants truncated in the tree preview). Click **Clear selection** to target the whole stage.
+3. **Choose a workflow** — Pick **Safe Cleanup**, **Geometry Optimization**, or **Find Overlaps** and review the operation list and output path. Any operation that cannot safely run on a sub-hierarchy (such as material deduplication in **Safe Cleanup**) is marked as skipped.
+4. **Run** — Click **Run** (or press `Ctrl+Enter`). Existing output files prompt for confirmation before overwrite. Use **Open output folder** when a write job finishes.
 
-The last committed input and output paths are restored on the next launch. No recent-file history or custom operation profiles are stored.
+### Result tabs
 
-## Reviewed workflows
+- **Overview** — Displays the loaded stage, active scope, selected workflow, latest run result, and the **Stage Statistics** table (prim counts, inactive/invisible counts, faces, and vertices collected automatically in a temporary directory when a stage is loaded).
+- **Scene** — Bounded prim hierarchy with schema types and composition badges.
+- **Analysis** — Appears when **Find Overlaps** produces structured mesh-overlap findings.
+- **Log** — Shows startup and scope messages when a run begins, then appends the worker log tail (up to 80 lines), diagnostic output, or structured operation results once the worker process exits.
 
-### Safe Cleanup (`safe_publish`)
+### Shortcuts
 
-Creates a separate USD derivative. Whole-stage runs recompute extents and reduce redundant primvar, material, and exact duplicate time-sample data. Prim-scoped runs omit material deduplication because NVIDIA's operation can rebind material consumers outside the selected hierarchy; the scope label, operation list, worker log, and report warning disclose that omission. The workflow does not expose hierarchy-flattening, topology-changing, deletion, or GPU-dependent operations.
+| Shortcut | Action |
+| --- | --- |
+| `Ctrl+O` | Browse for an input USD file |
+| `Ctrl+Enter` | Run the selected workflow |
+| `Esc` | Cancel the running workflow |
 
-### Geometry Optimization (`geometry_optimization`)
+---
 
-Creates a separate USD derivative using only `computeExtents` and conservative `optimizePrimvars` settings. It is intended for focused geometry-data optimization and supports whole-stage or selected-prim hierarchy scope without skipped operations.
+## Using the CLI
 
-### Automatic Inspect Stage (`diagnostics`)
+In PowerShell, use `.\usdopt.cmd` from the extracted portable folder (or `uv run usdopt` from a source checkout):
 
-Runs alongside scene-hierarchy inspection whenever an input is committed. Parsed prim counts, face counts, and vertex counts appear in the permanent **Diagnostics** tab. The automatic GUI check uses temporary report storage and does not leave files beside the source USD; the same preset remains available through the CLI when a persistent report is needed.
+```powershell
+# Check runtime environment and operation discovery
+.\usdopt.cmd doctor
 
-### Find Overlaps (`find_overlaps`)
+# Optimize a single USD stage (defaults to --preset safe_publish; use --dry-run to validate only)
+.\usdopt.cmd optimize --input "C:\path\asset.usda" --output "C:\path\asset.opt.usda" --force
 
-Runs read-only overlapping-mesh analysis on the CPU for predictable hardware-independent behavior. Structured findings appear in the **Analysis** tab and are retained in the JSON report.
+# Run a read-only overlap check and write a JSON report
+.\usdopt.cmd optimize --input "C:\path\asset.usda" --preset find_overlaps
 
-## Main controls
+# Optimize multiple files into one directory
+.\usdopt.cmd batch --input "C:\path\a.usda" --input "C:\path\b.usda" --output-dir "C:\path\out" --preset safe_publish
 
-- **Input USD** — local stage path or drag-and-drop target.
-- **Workflow** — Safe Cleanup, Geometry Optimization, or Find Overlaps. Its description appears directly beneath the selector.
-- **Output USD** — rebuilt after the input is committed with Enter or focus loss. Typing alone does not change it; a manual path is replaced when the new input is committed.
-- **Verified operations** — compact read-only list showing what the workflow runs. Operations that cannot preserve a selected hierarchy boundary are marked as skipped.
-- **Overview** — default result surface for the committed stage. It summarizes source-stage facts, selected scope, workflow, and the latest outcome, then links to the most useful detailed result.
-- **Scene** — bounded prim hierarchy with schema types and composition indicators. Use Ctrl- or Shift-click to select multiple prims. A selected parent scopes the workflow to that prim and every descendant, including descendants omitted by display truncation. Selecting both a parent and its child records only the parent scope. **Clear selection** restores whole-stage scope.
-- **Run / Cancel** — starts or interrupts the active worker process.
-- **Open output folder** — opens the derivative folder after a write workflow.
-- Existing outputs are confirmed only when **Run** is pressed; the form does not show an early replacement error.
-- **Log** — fixed-width worker output with debug, information, warning, error, and success colors.
-- **Analysis** — reviewed headings, counts, and prim-path bullets for Find Overlaps. Unreviewed result shapes direct users to the raw JSON report.
-- **Diagnostics** — permanent parsed stage statistics refreshed automatically with Scene inspection.
+# Inspect available presets (add --all to include developer presets) and operations
+.\usdopt.cmd list-presets
+.\usdopt.cmd show-preset safe_publish
+.\usdopt.cmd list-ops
+```
 
-Reports retain the normalized selected root prim paths in `prim_paths`, the operations that actually ran in `operations`, and any scope-preservation omissions in `warnings`. An empty `prim_paths` list records a whole-stage workflow. Reports remain available as JSON files and through the `usdopt report-summary` CLI command. The GUI intentionally does not maintain a separate report-history browser.
+### Reports and logs
 
-## Shortcuts
+- **Write jobs** (`safe_publish`, `geometry_optimization`) write the optimized USD file, `<output>.report.json`, and `<output>.log`.
+- **Read-only jobs** (`diagnostics`, `find_overlaps`) and `--dry-run` jobs write `<output>.report.json` only (no USD derivative or `.log` file is written).
+- **Inspection commands** (`doctor`, `list-presets`, `show-preset`, `list-ops`, `report-summary`) print to stdout without writing report or log files.
 
-- `Ctrl+O` — choose an input USD.
-- `Ctrl+Enter` — run the current workflow when ready.
-- `Esc` — cancel the active workflow.
+Each `<output>.report.json` records the normalized `prim_paths` (empty for whole-stage runs), executed `operations`, structured `operation_results`, duration, and warnings.
 
-See [operation support](operation-support.md) for the complete 50-operation classification and [development](development.md) for source setup and validation.
+To summarize a directory of JSON reports as a text table or JSON payload:
+
+```powershell
+.\usdopt.cmd report-summary --reports-dir reports/smoke-tests
+.\usdopt.cmd report-summary --reports-dir reports/smoke-tests --json
+```
+
+Because read-only presets (`diagnostics`, `find_overlaps`) do not export a USD file, their output file size appears as `missing` in the summary table.

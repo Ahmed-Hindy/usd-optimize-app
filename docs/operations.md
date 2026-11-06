@@ -1,89 +1,81 @@
-# Runtime Operations Reference
+# Operations & Support Reference
 
-The bundled NVIDIA `usd-optimize` 1.4.0 runtime registers 50 operations. The
-**What it does** text has been verified against NVIDIA's official [Scene
-Optimizer operations documentation](https://docs.omniverse.nvidia.com/extensions/latest/ext_scene-optimizer/operations.html)
-and, for operations not published on that page, the operation description in
-the previously reviewed NVIDIA 1.1.0 source checkout. The added `moveMaterials`,
-`conformMeshes`, and `mergePhysicsBodyMeshes` entries follow the shipped 1.2.1
-and 1.4.0 changelogs. This reference describes
-the operation's behavior, not this app's safety policy.
+The bundled NVIDIA `usd-optimize` v1.4.0 runtime registers 50 operations. Because many operations alter mesh topology, flatten hierarchies, or require asset-specific parameters, `usd-optimize-app` groups them into five support tiers (defined in [`src/usd_optimize_app/operation_support.py`](../src/usd_optimize_app/operation_support.py)):
 
-`executionContext`, which appears in every preset, is not an operation in this
-registry. It supplies execution flags such as verbose logging and analysis mode.
+| Tier | Count | Policy |
+| --- | ---: | --- |
+| **Supported** | 6 | Safe for general workflows; preserves hierarchy and mesh topology, or runs read-only CPU analysis. |
+| **Advanced** | 27 | Modifies topology, hierarchy, materials, or schemas; exposed only via developer presets and the operation matrix. |
+| **Requires configuration** | 12 | Needs explicit asset-specific parameters (boxes, paths, tolerances, UV projections) to run meaningfully. |
+| **GPU-dependent** | 1 | Requires compatible GPU visibility hardware (`findOccludedMeshes`). |
+| **Internal** | 4 | Low-level helpers or scripting entry points (`deletePrims`, `generateScene`, `pythonScript`, `utilityFunction`). |
 
-## Bundled-workflow operations
+> **Note:** `executionContext` appears in preset JSON files to configure logging and analysis flags, but is not a registered operation.
 
-| Operation | What it does | Support | Bundled preset(s) |
+---
+
+## Operations in Bundled Presets
+
+The four user-facing presets are **Safe Cleanup** (`safe_publish`), **Geometry Optimization** (`geometry_optimization`), **Inspect Stage** (`diagnostics`), and **Find Overlaps** (`find_overlaps`). The remaining presets are developer-only (`usdopt list-presets --all`).
+
+In the bundled presets, `optimizePrimvars` indexes and simplifies primvars without removing bound data, `optimizeTimeSamples` disables interpolation removal and sets zero tolerances so only exact duplicate samples are removed, and `findOverlappingMeshes` runs with `useGpu: false` for deterministic CPU behavior.
+
+| Operation | What it does | Tier | Bundled preset(s) |
 | --- | --- | --- | --- |
-| `computeExtents` | Computes or recomputes and authors the `extents` property for meshes. | Supported; writes USD | Safe Cleanup; Animated Cleanup Comparison; Prototype Rewrite Test |
-| `decimateMeshes` | Reduces mesh tessellation density subject to configured quality/error limits. | Advanced; writes USD | Destructive Geometry Stress |
-| `deduplicateGeometry` | Replaces duplicate meshes with one mesh plus references or instances to it. | Advanced; writes USD | Destructive Geometry Stress; Prototype Rewrite Test |
-| `moveMaterials` | Moves material prims using USD namespace edits, changing their hierarchy. | Advanced; writes USD | Developer operation matrix |
-| `findOverlappingMeshes` | Finds interfering geometry in a stage. | Supported; read-only analysis | Find Overlaps |
-| `flattenHierarchy` | Removes redundant `Xform` prims to reduce prim count. | Advanced; writes USD | Destructive Geometry Stress |
-| `merge` | Replaces meshes that share common properties with a single merged mesh. | Advanced; writes USD | Destructive Geometry Stress |
-| `optimizeMaterials` | Replaces duplicate materials with references to unique materials. | Supported; writes USD | Safe Cleanup; Animated Cleanup Comparison; Prototype Rewrite Test |
-| `optimizePrimvars` | Simplifies primvar data and can index or flatten primvars. | Supported; writes USD | Safe Cleanup; Animated Cleanup Comparison; Prototype Rewrite Test |
-| `optimizeTimeSamples` | Removes redundant time samples from attributes throughout a stage. | Supported; writes USD | Safe Cleanup; Animated Cleanup Comparison |
-| `organizePrototypes` | Reparents internal scene-graph instance prototypes under a user-specified namespace. | Advanced; writes USD | Prototype Rewrite Test |
-| `printStats` | Collects read-only stage statistics. | Supported; read-only analysis | Inspect Stage |
+| `computeExtents` | Computes and authors mesh `extents`. | Supported (writes USD) | Safe Cleanup, Geometry Optimization, Animated Cleanup Comparison, Prototype Rewrite Test |
+| `optimizeMaterials` | Deduplicates materials and rebinds consumers to unique materials. | Supported (writes USD) | Safe Cleanup, Animated Cleanup Comparison, Prototype Rewrite Test |
+| `optimizePrimvars` | Simplifies, indexes, or flattens primvar storage. | Supported (writes USD) | Safe Cleanup, Geometry Optimization, Animated Cleanup Comparison, Prototype Rewrite Test |
+| `optimizeTimeSamples` | Removes redundant time samples from attributes (limited to exact duplicates in bundled presets). | Supported (writes USD) | Safe Cleanup, Animated Cleanup Comparison |
+| `printStats` | Collects read-only stage statistics. | Supported (read-only) | Inspect Stage |
+| `findOverlappingMeshes` | Detects intersecting meshes (configured for deterministic CPU execution). | Supported (read-only) | Find Overlaps |
+| `decimateMeshes` | Reduces mesh polygon count within quality/error limits. | Advanced (writes USD) | Destructive Geometry Stress |
+| `deduplicateGeometry` | Replaces duplicate meshes with references or instances. | Advanced (writes USD) | Destructive Geometry Stress, Prototype Rewrite Test |
+| `flattenHierarchy` | Collapses redundant `Xform` prims. | Advanced (writes USD) | Destructive Geometry Stress |
+| `merge` | Combines compatible meshes into a single mesh. | Advanced (writes USD) | Destructive Geometry Stress |
+| `moveMaterials` | Moves material prims via namespace edits. | Advanced (writes USD) | Developer operation matrix |
+| `organizePrototypes` | Reparents scene-graph instance prototypes under a target namespace. | Advanced (writes USD) | Prototype Rewrite Test |
 
-The first three columns describe the runtime behavior; a preset can further
-constrain it with fixed configuration. The three user-facing presets are Safe
-Cleanup, Inspect Stage, and Find Overlaps. The remaining listed presets are
-developer-only and appear with `usdopt list-presets --all`.
+---
 
-## Available, but not used by a bundled preset
+## Other Runtime Operations
 
-| Operation | What it does | Support |
+| Operation | What it does | Tier |
 | --- | --- | --- |
-| `boxClip` | Clips selected content to an explicit box. | Requires configuration; writes USD |
-| `conformMeshes` | Makes meshes that `merge` would group together compatible by reconciling normals, UVs, primvars, and `doubleSided`. | Advanced; writes USD |
-| `countVertices` | Reports prims with excessive vertex counts. | Advanced; writes USD |
-| `deduplicateHierarchies` | Finds duplicate prim hierarchies and replaces duplicates with instanceable internal references to a prototype. | Advanced; writes USD |
-| `deleteHiddenPrims` | Deletes prims that are constantly hidden. | Advanced; writes USD |
-| `deletePrims` | Low-level deletion of explicitly named prims. | Internal; writes USD |
-| `diceMeshes` | Partitions meshes using spatial dicing parameters. | Requires configuration; writes USD |
-| `editStageMetrics` | Changes stage scale or up-axis metadata. | Requires configuration; writes USD |
-| `findCoincidingGeometry` | Finds geometry occupying the same positional space in a scene. | Advanced; writes USD |
-| `findFlatHierarchies` | Finds prims with more than a specified number of children. | Advanced; writes USD |
-| `findOccludedMeshes` | Finds meshes occluded from any camera whose sightline does not cross meshes in the scene. | GPU-dependent; read-only analysis |
-| `fitPrimitives` | Fits sphere, cylinder, cone, or cube primitives to selected meshes and replaces meshes that fit within tolerance. | Requires configuration; writes USD |
-| `generateAtlasUVs` | Generates atlas UVs using texture-layout settings. | Requires configuration; writes USD |
-| `generateNormals` | Authors mesh normal/shading data. | Advanced; writes USD |
-| `generateProjectionUVs` | Generates UVs with an explicit projection mode. | Requires configuration; writes USD |
-| `generateScene` | Provides a test/helper scene-generation operation. | Internal; writes USD |
-| `manifoldMeshes` | Repairs mesh topology to make meshes manifold. | Advanced; writes USD |
-| `mergePhysicsBodyMeshes` | Merges compatible visual and collision meshes within each rigid body while preserving body, joint, and articulation frames. | Advanced; writes USD |
-| `mergeVertices` | Merges vertices using a configured tolerance. | Advanced; writes USD |
-| `meshCleanup` | Cleans meshes, for example by merging nearby vertices, removing degenerate faces, making meshes manifold, or removing isolated vertices. | Advanced; writes USD |
-| `optimizeSkelRoots` | Merges meshes attached to a skeleton to optimize GPU skinning computation. | Advanced; writes USD |
-| `pivot` | Places a target prim's parent transform at the center of its bounding box. | Requires configuration; writes USD |
-| `primitivesToMeshes` | Replaces sphere, cylinder, cone, and cube gprims with mesh approximations. | Advanced; writes USD |
-| `pruneLeaves` | Finds and prunes leaf grouping prims such as `Xform` and `Scope`. | Advanced; writes USD |
-| `pythonScript` | Executes arbitrary Python supplied to the operation. | Internal; writes USD |
-| `remeshMeshes` | Remeshes input `UsdGeom` mesh prims to a defined tolerance, creating new topology. | Advanced; writes USD |
-| `removeAttributes` | Removes attributes or namespaces matched by explicit rules. | Requires configuration; writes USD |
-| `removePrims` | Removes selected prims using explicit selection semantics. | Requires configuration; writes USD |
-| `removeSmallGeometry` | Identifies and removes small or degenerate geometry from a USD stage. | Advanced; writes USD |
-| `removeUntypedPrims` | Deletes untyped authored prims. | Advanced; writes USD |
-| `removeUnusedUVs` | Removes UV data based on material-usage assumptions. | Advanced; writes USD |
-| `rtxMeshCount` | Counts RTX meshes in the stage and how many are unique. | Advanced; read-only analysis |
-| `shrinkwrap` | Converts meshes to a level-set volume and extracts a watertight mesh. | Requires configuration; writes USD |
-| `sparseMeshes` | Analyzes sparse meshes in a scene and suggests optimizations. | Advanced; read-only analysis |
-| `splitMeshes` | Splits disjoint parts of meshes that share no vertices into separate mesh prims. | Requires configuration; writes USD |
-| `subdivideMeshes` | Applies Catmull-Clark or Loop subdivision, replacing mesh topology with the subdivided result. | Requires configuration; writes USD |
-| `triangulateMeshes` | Converts mesh faces to triangles. | Advanced; writes USD |
-| `utilityFunction` | Provides simple utilities such as deinstancing, unbinding materials, setting instanceability, and flattening instances. | Internal; writes USD |
-
-## How to inspect the current runtime
-
-The app queries the installed runtime rather than assuming this list:
-
-```powershell
-uv run usdopt list-operations
-```
-
-For the product support policy and validation details, see
-[Operation Support Matrix](operation-support.md).
+| `boxClip` | Clips geometry to an explicit bounding box. | Requires configuration (writes USD) |
+| `conformMeshes` | Reconciles normals, UVs, primvars, and `doubleSided` so meshes can be merged. | Advanced (writes USD) |
+| `countVertices` | Reports prims exceeding a vertex threshold. | Advanced (writes USD) |
+| `deduplicateHierarchies` | Replaces duplicate prim subtrees with instanceable internal references. | Advanced (writes USD) |
+| `deleteHiddenPrims` | Deletes constantly hidden prims. | Advanced (writes USD) |
+| `deletePrims` | Deletes explicitly named prims. | Internal (writes USD) |
+| `diceMeshes` | Splits meshes using spatial dicing intervals. | Requires configuration (writes USD) |
+| `editStageMetrics` | Modifies stage `metersPerUnit` or `upAxis` metadata. | Requires configuration (writes USD) |
+| `findCoincidingGeometry` | Identifies geometry occupying identical space. | Advanced (writes USD) |
+| `findFlatHierarchies` | Reports prims exceeding a child-count threshold. | Advanced (writes USD) |
+| `findOccludedMeshes` | Finds meshes occluded from camera viewpoints. | GPU-dependent (read-only) |
+| `fitPrimitives` | Replaces meshes matching sphere, cylinder, cone, or cube shapes within tolerance. | Requires configuration (writes USD) |
+| `generateAtlasUVs` | Generates atlas UVs from texture-layout parameters. | Requires configuration (writes USD) |
+| `generateNormals` | Computes and authors mesh normals. | Advanced (writes USD) |
+| `generateProjectionUVs` | Generates UVs using an explicit projection mode. | Requires configuration (writes USD) |
+| `generateScene` | Test helper that generates synthetic scenes. | Internal (writes USD) |
+| `manifoldMeshes` | Repairs non-manifold mesh topology. | Advanced (writes USD) |
+| `mergePhysicsBodyMeshes` | Merges compatible visual and collision meshes within rigid bodies. | Advanced (writes USD) |
+| `mergeVertices` | Welds vertices within a distance tolerance. | Advanced (writes USD) |
+| `meshCleanup` | Removes degenerate faces, isolated vertices, and non-manifold geometry. | Advanced (writes USD) |
+| `optimizeSkelRoots` | Merges skinned meshes under a skeleton root. | Advanced (writes USD) |
+| `pivot` | Centers a prim's parent transform pivot on its bounding box. | Requires configuration (writes USD) |
+| `primitivesToMeshes` | Converts analytic sphere, cylinder, cone, and cube gprims into meshes. | Advanced (writes USD) |
+| `pruneLeaves` | Removes empty leaf grouping prims (`Xform`, `Scope`). | Advanced (writes USD) |
+| `pythonScript` | Runs arbitrary Python code inside the optimization pipeline. | Internal (writes USD) |
+| `remeshMeshes` | Rebuilds mesh topology to a target tolerance. | Advanced (writes USD) |
+| `removeAttributes` | Strips attributes matching explicit patterns. | Requires configuration (writes USD) |
+| `removePrims` | Removes prims matching selection rules. | Requires configuration (writes USD) |
+| `removeSmallGeometry` | Deletes small or degenerate geometry. | Advanced (writes USD) |
+| `removeUntypedPrims` | Deletes untyped prims. | Advanced (writes USD) |
+| `removeUnusedUVs` | Strips UV primvars not referenced by bound materials. | Advanced (writes USD) |
+| `rtxMeshCount` | Counts total and unique RTX meshes in the stage. | Advanced (read-only) |
+| `shrinkwrap` | Converts meshes to a level-set volume and extracts a watertight mesh. | Requires configuration (writes USD) |
+| `sparseMeshes` | Analyzes sparse meshes and recommends optimizations. | Advanced (read-only) |
+| `splitMeshes` | Splits disconnected mesh islands into separate mesh prims. | Requires configuration (writes USD) |
+| `subdivideMeshes` | Applies Catmull-Clark or Loop subdivision to meshes. | Requires configuration (writes USD) |
+| `triangulateMeshes` | Triangulates polygonal mesh faces. | Advanced (writes USD) |
+| `utilityFunction` | Runs utility tasks (deinstancing, material unbinding, instance flattening). | Internal (writes USD) |
