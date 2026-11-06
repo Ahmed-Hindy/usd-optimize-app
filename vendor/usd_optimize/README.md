@@ -1,10 +1,3 @@
 # NVIDIA usd-optimize package location
 
-This folder is not searched automatically. Development launchers use the shared
-runtime discovery: an explicit `USD_OPTIMIZE_RUNTIME_ROOT` override, a portable
-bundle, or the sibling v1.4.0 runtime artifact.
-
-To use a package stored here, set `USD_OPTIMIZE_RUNTIME_ROOT` to its extracted
-root. See [runtime setup](../../docs/usd-optimize-source-dependency.md).
-
-This repository intentionally does not vendor NVIDIA binaries.
+This folder is not searched automatically. To use an extracted runtime stored here, set `USD_OPTIMIZE_RUNTIME_ROOT` to its root directory. See the [Development & Packaging Guide](../../docs/development.md#environment-setup).
