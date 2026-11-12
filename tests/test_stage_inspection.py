@@ -166,3 +166,21 @@ def test_controller_shutdown_cancels_and_joins_threads(monkeypatch, tmp_path: Pa
     assert diagnostics_thread.cancelled is True
     assert diagnostics_thread.wait_timeout == 5_000
     assert inspection_thread.wait_timeout == 5_000
+
+
+def test_controller_allows_workflows_when_diagnostics_fail(monkeypatch, tmp_path: Path) -> None:
+    _install_fake_threads(monkeypatch)
+    controller = StageInspectionController()
+    input_path = tmp_path / "asset.usda"
+    controller.inspect(input_path)
+    inspection_thread = _FakeInspectionThread.instances[-1]
+    inspection_thread.inspected.emit(
+        inspection_thread.request_id, InputInspection(True, "Scene loaded · 1 prim", 1)
+    )
+
+    diagnostics_thread = _FakeDiagnosticsThread.instances[-1]
+    diagnostics_thread.failed.emit(diagnostics_thread.request_id, "worker failed")
+
+    assert controller.diagnostics_pending is False
+    assert controller.diagnostics_error == "worker failed"
+    assert controller.blocking_reason() is None

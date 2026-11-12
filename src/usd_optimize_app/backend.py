@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Event
@@ -81,6 +82,7 @@ class OptimizeJobSettings:
     write_output: bool = True
     cancel_event: Event | None = None
     prim_paths: tuple[str, ...] = ()
+    on_output: Callable[[str], None] | None = None
 
 
 def get_environment_status() -> EnvironmentStatus:
@@ -230,6 +232,7 @@ def build_optimize_request(settings: OptimizeJobSettings) -> OptimizeRequest:
         write_output=settings.write_output,
         prim_paths=normalize_prim_paths(settings.prim_paths),
         cancel_event=settings.cancel_event,
+        on_output=settings.on_output,
     )
 
 

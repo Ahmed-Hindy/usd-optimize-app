@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Event
@@ -38,6 +39,7 @@ class OptimizeRequest:
     log_path: Path | None = None
     cancel_event: Event | None = None
     prim_paths: tuple[str, ...] = ()
+    on_output: Callable[[str], None] | None = None
 
 
 @dataclass
