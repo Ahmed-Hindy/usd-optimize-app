@@ -39,6 +39,33 @@ def selected_prim_paths(tree: QTreeWidget) -> tuple[str, ...]:
     return normalize_prim_paths(paths)
 
 
+def filter_scene_tree(tree: QTreeWidget, query: str) -> None:
+    """Show prims matching a case-insensitive name or path query and their ancestors."""
+    needle = query.strip().lower()
+    for index in range(tree.topLevelItemCount()):
+        _filter_item(tree.topLevelItem(index), needle)
+
+
+def _filter_item(item: QTreeWidgetItem, needle: str) -> bool:
+    child_matches = False
+    for index in range(item.childCount()):
+        if _filter_item(item.child(index), needle):
+            child_matches = True
+
+    if not needle:
+        item.setHidden(False)
+        return True
+
+    prim_name = item.text(0).lower()
+    prim_path = str(item.data(0, Qt.ItemDataRole.UserRole) or "").lower()
+    self_matches = needle in prim_name or needle in prim_path
+    visible = self_matches or child_matches
+    item.setHidden(not visible)
+    if child_matches:
+        item.setExpanded(True)
+    return visible
+
+
 def _build_item(node: SceneGraphNode) -> QTreeWidgetItem:
     item = QTreeWidgetItem((node.name or node.path, node.type_name))
     item.setData(0, Qt.ItemDataRole.UserRole, node.path)

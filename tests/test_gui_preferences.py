@@ -20,5 +20,17 @@ def test_preferences_ignore_non_string_values(tmp_path) -> None:
     settings = QSettings(str(tmp_path / "preferences.ini"), QSettings.Format.IniFormat)
     settings.setValue("paths/last_input", 42)
     settings.setValue("paths/last_output", ["not", "a", "path"])
+    settings.setValue("workflow/last_selected", 99)
 
-    assert GuiPreferences(settings).load_paths() == SavedPaths(input_path="", output_path="")
+    preferences = GuiPreferences(settings)
+    assert preferences.load_paths() == SavedPaths(input_path="", output_path="")
+    assert preferences.load_workflow() == ""
+
+
+def test_preferences_store_and_load_workflow(tmp_path) -> None:
+    settings = QSettings(str(tmp_path / "preferences.ini"), QSettings.Format.IniFormat)
+    preferences = GuiPreferences(settings)
+
+    preferences.save_workflow("  geometry_optimization  ")
+
+    assert preferences.load_workflow() == "geometry_optimization"

@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QLineEdit,
     QPlainTextEdit,
     QPushButton,
     QSizePolicy,
@@ -21,7 +22,11 @@ from PySide6.QtWidgets import (
 )
 
 from usd_optimize_app.gui.log_view import configure_log_view
-from usd_optimize_app.gui.scene_graph_view import configure_scene_tree, selected_prim_paths
+from usd_optimize_app.gui.scene_graph_view import (
+    configure_scene_tree,
+    filter_scene_tree,
+    selected_prim_paths,
+)
 
 
 @dataclass(frozen=True)
@@ -31,6 +36,7 @@ class OverviewState:
     stage: str = "Choose an input USD to inspect its hierarchy."
     scope: str = "Entire stage"
     workflow: str = "Choose a workflow"
+    latest_result: str = "No workflow run yet."
 
 
 class ResultsPanel(QFrame):
@@ -45,6 +51,9 @@ class ResultsPanel(QFrame):
         self._build_layout()
         self.scene_tree.itemSelectionChanged.connect(self.scope_changed)
         self.clear_scope_button.clicked.connect(self.scene_tree.clearSelection)
+        self.scene_filter_edit.textChanged.connect(
+            lambda text: filter_scene_tree(self.scene_tree, text)
+        )
 
     @property
     def selected_paths(self) -> tuple[str, ...]:
@@ -56,6 +65,7 @@ class ResultsPanel(QFrame):
         self.overview_stage_value.setText(state.stage)
         self.overview_scope_value.setText(state.scope)
         self.overview_workflow_value.setText(state.workflow)
+        self.overview_result_value.setText(state.latest_result)
         self.compact_stage_value.setText(state.stage)
         self.compact_scope_value.setText(state.scope)
 
@@ -111,6 +121,9 @@ class ResultsPanel(QFrame):
         self.scene_scope_label.setObjectName("SectionHint")
         self.clear_scope_button = QPushButton("Clear selection")
         self.clear_scope_button.setEnabled(False)
+        self.scene_filter_edit = QLineEdit()
+        self.scene_filter_edit.setPlaceholderText("Filter prims by name or path...")
+        self.scene_filter_edit.setClearButtonEnabled(True)
         self.scene_tree = QTreeWidget()
         configure_scene_tree(self.scene_tree)
         self.diagnostics_summary_label = self._wrapped_label(
@@ -126,6 +139,7 @@ class ResultsPanel(QFrame):
         self.overview_stage_value = self._wrapped_label()
         self.overview_scope_value = self._wrapped_label()
         self.overview_workflow_value = self._wrapped_label()
+        self.overview_result_value = self._wrapped_label("No workflow run yet.")
         self.compact_stage_value = self._wrapped_label()
         self.compact_scope_value = self._wrapped_label()
         self._details_expanded = False
@@ -155,6 +169,7 @@ class ResultsPanel(QFrame):
         overview_layout.addLayout(self._overview_section("STAGE", self.overview_stage_value))
         overview_layout.addLayout(self._overview_section("SCOPE", self.overview_scope_value))
         overview_layout.addLayout(self._overview_section("WORKFLOW", self.overview_workflow_value))
+        overview_layout.addLayout(self._overview_section("LATEST RUN", self.overview_result_value))
         statistics_title = QLabel("STAGE STATISTICS")
         statistics_title.setObjectName("StatusCaption")
         overview_layout.addWidget(statistics_title)
@@ -171,6 +186,7 @@ class ResultsPanel(QFrame):
         scope_row.addWidget(self.scene_scope_label, stretch=1)
         scope_row.addWidget(self.clear_scope_button)
         scene_layout.addLayout(scope_row)
+        scene_layout.addWidget(self.scene_filter_edit)
         scene_layout.addWidget(self.scene_tree, stretch=1)
         self.scene_tab_index = self.tabs.addTab(self.scene_tab, "Scene")
 

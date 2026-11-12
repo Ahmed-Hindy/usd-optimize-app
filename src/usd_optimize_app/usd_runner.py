@@ -105,6 +105,7 @@ def run_optimization(request: OptimizeRequest) -> OptimizeResult:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         log_path.parent.mkdir(parents=True, exist_ok=True)
 
+    input_size_bytes = input_path.stat().st_size
     worker_execution = _run_worker_process(
         WorkerJob(
             runtime_root=status.runtime_root,
@@ -131,6 +132,10 @@ def run_optimization(request: OptimizeRequest) -> OptimizeResult:
         worker_output=worker_execution.worker_output if not request.write_output else "",
         operation_results=worker_execution.operation_results,
         warnings=list(scope_plan.warnings),
+        input_size_bytes=input_size_bytes,
+        output_size_bytes=(
+            output_path.stat().st_size if request.write_output and output_path.exists() else None
+        ),
     )
     write_result_report(result, report_path)
     return result
