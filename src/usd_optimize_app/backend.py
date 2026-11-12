@@ -15,7 +15,11 @@ from usd_optimize_app.models import (
     PresetDefinition,
 )
 from usd_optimize_app.operation_scope import normalize_prim_paths
-from usd_optimize_app.path_utils import default_output_path, ensure_supported_usd_path
+from usd_optimize_app.path_utils import (
+    default_diagnostic_report_path,
+    default_output_path,
+    ensure_supported_usd_path,
+)
 from usd_optimize_app.presets import load_all_presets, load_preset, operation_names
 from usd_optimize_app.usd_env import check_environment, configure_environment
 from usd_optimize_app.usd_runner import run_optimization
@@ -215,12 +219,17 @@ def _build_scene_graph(stage: object) -> tuple[tuple[SceneGraphNode, ...], int, 
 def build_optimize_request(settings: OptimizeJobSettings) -> OptimizeRequest:
     """Build a validated optimization request from user-facing settings."""
     input_path = ensure_supported_usd_path(settings.input_path)
+    preset = load_preset(settings.preset_name)
     output_path = (
         settings.output_path.expanduser().resolve()
         if settings.output_path
         else default_output_path(input_path)
     )
-    preset = load_preset(settings.preset_name)
+    report_path = (
+        default_diagnostic_report_path(input_path, preset.name)
+        if settings.output_path is None and not settings.write_output
+        else None
+    )
     return OptimizeRequest(
         input_path=input_path,
         output_path=output_path,
@@ -228,6 +237,7 @@ def build_optimize_request(settings: OptimizeJobSettings) -> OptimizeRequest:
         force=settings.force,
         dry_run=settings.dry_run,
         write_output=settings.write_output,
+        report_path=report_path,
         prim_paths=normalize_prim_paths(settings.prim_paths),
         cancel_event=settings.cancel_event,
     )
@@ -253,13 +263,13 @@ def run_batch_jobs(
     if write_output and output_dir is None:
         raise PresetError("Choose an output directory for this batch preset.")
     resolved_output_dir = output_dir.expanduser().resolve() if output_dir else None
-    planned_jobs: list[tuple[Path, Path]] = []
+    planned_jobs: list[tuple[Path, Path | None]] = []
     for input_path in input_paths:
         resolved_input_path = ensure_supported_usd_path(input_path)
         output_path = (
             resolved_output_dir / default_output_path(resolved_input_path).name
             if resolved_output_dir
-            else default_output_path(resolved_input_path)
+            else None
         )
         planned_jobs.append((resolved_input_path, output_path))
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import asdict
 from pathlib import Path
 
 from usd_optimize_app.backend import OptimizeJobSettings, run_batch_jobs, run_optimize_job
@@ -17,6 +18,7 @@ from usd_optimize_app.report_summary import (
     load_report_summaries,
     summaries_to_json_data,
 )
+from usd_optimize_app.reports import result_to_json_data
 from usd_optimize_app.smoke_tests import (
     DEFAULT_EXTERNAL_SMOKE_PRESETS,
     DEFAULT_SMOKE_PRESETS,
@@ -61,6 +63,11 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     doctor_parser = subparsers.add_parser("doctor", help="Check the usd-optimize environment.")
+    doctor_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Write machine-readable JSON instead of text.",
+    )
     doctor_parser.set_defaults(func=_run_doctor)
 
     list_ops_parser = subparsers.add_parser("list-ops", help="List usd-optimize operations.")
@@ -71,6 +78,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--all",
         action="store_true",
         help="Include developer-only validation presets.",
+    )
+    list_presets_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Write machine-readable JSON instead of text.",
     )
     list_presets_parser.set_defaults(func=_run_list_presets)
 
@@ -87,6 +99,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Preset name or JSON path.",
     )
     optimize_parser.add_argument(
+        "--prim-path",
+        action="append",
+        dest="prim_paths",
+        default=[],
+        help="Limit optimization or analysis to a prim hierarchy (repeatable).",
+    )
+    optimize_parser.add_argument(
         "--force",
         action="store_true",
         help="Replace an existing output file.",
@@ -95,6 +114,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run",
         action="store_true",
         help="Validate request without writing USD.",
+    )
+    optimize_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Write machine-readable JSON instead of text.",
     )
     optimize_parser.set_defaults(func=_run_optimize)
 
@@ -112,6 +136,11 @@ def build_parser() -> argparse.ArgumentParser:
     batch_parser.add_argument("--preset", default="safe_publish", help="Bundled preset name.")
     batch_parser.add_argument(
         "--force", action="store_true", help="Replace existing batch outputs."
+    )
+    batch_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Write machine-readable JSON instead of text.",
     )
     batch_parser.set_defaults(func=_run_batch)
 
@@ -209,8 +238,12 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _run_doctor(_args: argparse.Namespace) -> int:
+def _run_doctor(args: argparse.Namespace) -> int:
     status = check_environment()
+    if args.json:
+        payload = asdict(status) | {"is_usable": status.is_usable}
+        print(json.dumps(payload, indent=2, default=str))
+        return 1 if status.errors else 0
     print("USD Optimize environment")
     print(f"  Runtime root: {status.runtime_root or 'not found'}")
     print(f"  Required Python: {status.required_python or 'unknown'}")
@@ -241,6 +274,20 @@ def _run_list_ops(_args: argparse.Namespace) -> int:
 
 def _run_list_presets(args: argparse.Namespace) -> int:
     presets = load_all_presets(include_developer=args.all)
+    if args.json:
+        payload = [
+            {
+                "name": preset.name,
+                "display_name": preset.display_name,
+                "risk": preset.risk,
+                "audience": preset.audience,
+                "description": preset.description,
+                "operations": preset.operations,
+            }
+            for preset in presets
+        ]
+        print(json.dumps(payload, indent=2))
+        return 0 if presets else 1
     if not presets:
         print("No presets found.")
         return 1
@@ -273,8 +320,12 @@ def _run_optimize(args: argparse.Namespace) -> int:
             force=args.force,
             dry_run=args.dry_run,
             write_output=preset.risk != "diagnostic",
+            prim_paths=tuple(args.prim_paths),
         )
     )
+    if args.json:
+        print(json.dumps(result_to_json_data(result), indent=2))
+        return 0
     worker_output = result.worker_output
     operation_results = result.operation_results
     if args.dry_run:
@@ -300,6 +351,9 @@ def _run_optimize(args: argparse.Namespace) -> int:
 def _run_batch(args: argparse.Namespace) -> int:
     """Run one bundled preset across the explicit batch input list."""
     results = run_batch_jobs(tuple(args.input), args.output_dir, args.preset, force=args.force)
+    if args.json:
+        print(json.dumps([result_to_json_data(result) for result in results], indent=2))
+        return 0
     for result in results:
         if result.worker_output:
             print(f"Diagnostics: {result.input_path}")

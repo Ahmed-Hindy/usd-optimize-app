@@ -18,10 +18,11 @@ def write_result_report(result: OptimizeResult, report_path: Path) -> None:
         report_path: Destination report path.
     """
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(json.dumps(_to_json_data(result), indent=2), encoding="utf-8")
+    report_path.write_text(json.dumps(result_to_json_data(result), indent=2), encoding="utf-8")
 
 
-def _to_json_data(result: OptimizeResult) -> dict[str, Any]:
+def result_to_json_data(result: OptimizeResult) -> dict[str, Any]:
+    """Convert an OptimizeResult into a JSON-serializable dictionary."""
     data = asdict(result)
     data.pop("worker_output", None)
     for key in ["input_path", "output_path", "report_path", "log_path"]:

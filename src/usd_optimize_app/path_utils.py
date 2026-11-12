@@ -25,5 +25,9 @@ def default_report_path(output_file_path: Path) -> Path:
     return output_file_path.with_suffix(f"{output_file_path.suffix}.report.json")
 
 
+def default_diagnostic_report_path(input_file_path: Path, preset_name: str) -> Path:
+    return input_file_path.with_name(f"{input_file_path.stem}.{preset_name}.report.json")
+
+
 def default_log_path(output_file_path: Path) -> Path:
     return output_file_path.with_suffix(f"{output_file_path.suffix}.log")
