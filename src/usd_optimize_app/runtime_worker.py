@@ -6,7 +6,7 @@ import argparse
 import json
 import os
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
 from usd_optimize_app.usd_env import configure_environment
@@ -116,7 +116,7 @@ def _preserve_asset_identifier(asset_path: str) -> bool:
         return True
     if "://" in asset_path or "[" in asset_path or "]" in asset_path:
         return True
-    return Path(asset_path).is_absolute()
+    return PurePosixPath(asset_path).is_absolute() or PureWindowsPath(asset_path).is_absolute()
 
 
 def _path_relative_to_output(

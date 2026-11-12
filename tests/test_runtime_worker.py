@@ -56,10 +56,14 @@ def test_relative_asset_path_is_rebased_for_a_new_output_directory(tmp_path: Pat
 
 
 def test_non_file_asset_identifiers_are_preserved() -> None:
+    assert runtime_worker._preserve_asset_identifier("") is True
     assert runtime_worker._preserve_asset_identifier("omniverse://server/asset.usd") is True
     assert runtime_worker._preserve_asset_identifier("archive.usdz[layer.usd]") is True
     assert runtime_worker._preserve_asset_identifier("C:/assets/asset.usd") is True
+    assert runtime_worker._preserve_asset_identifier(r"\\server\share\asset.usd") is True
+    assert runtime_worker._preserve_asset_identifier("/assets/asset.usd") is True
     assert runtime_worker._preserve_asset_identifier("./payload.usd") is False
+    assert runtime_worker._preserve_asset_identifier("../textures/albedo.png") is False
 
 
 def test_collect_operation_results_rejects_missing_native_results() -> None:
