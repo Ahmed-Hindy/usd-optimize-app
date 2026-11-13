@@ -9,7 +9,7 @@ from usd_optimize_app import usd_runner
 from usd_optimize_app.errors import OptimizeError
 from usd_optimize_app.models import EnvironmentStatus, OptimizeRequest
 from usd_optimize_app.presets import load_preset
-from usd_optimize_app.reports import _to_json_data
+from usd_optimize_app.reports import result_to_json_data
 from usd_optimize_app.usd_runner import WorkerExecution, WorkerJob, run_optimization
 
 
@@ -111,7 +111,7 @@ def test_normal_result_does_not_keep_worker_output_in_report(monkeypatch, tmp_pa
     )
 
     assert result.worker_output == ""
-    assert "worker_output" not in _to_json_data(result)
+    assert "worker_output" not in result_to_json_data(result)
 
 
 def test_selected_prims_scope_worker_operations_and_report(monkeypatch, tmp_path: Path) -> None:

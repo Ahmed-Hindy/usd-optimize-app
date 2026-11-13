@@ -290,3 +290,115 @@ def test_diagnostic_batch_prints_worker_output(monkeypatch, capsys, tmp_path: Pa
     assert "Diagnostics:" in captured.out
     assert "| Sphere 1 0 0 |" in captured.out
     assert "side-panel" not in captured.out
+
+
+def test_optimize_command_forwards_prim_paths_and_outputs_json(
+    monkeypatch, capsys, tmp_path: Path
+) -> None:
+    import json
+
+    input_path = tmp_path / "asset.usda"
+    output_path = tmp_path / "asset.optimized.usda"
+    captured_settings = []
+
+    def fake_run_optimize_job(settings):
+        captured_settings.append(settings)
+        return OptimizeResult(
+            input_path=input_path,
+            output_path=output_path,
+            preset_name="safe_publish",
+            success=True,
+            duration_seconds=0.5,
+            operations=["computeExtents"],
+            prim_paths=("/World/Props",),
+            report_path=tmp_path / "asset.optimized.usda.report.json",
+        )
+
+    monkeypatch.setattr("usd_optimize_app.cli.run_optimize_job", fake_run_optimize_job)
+
+    exit_code = main(
+        [
+            "optimize",
+            "--input",
+            str(input_path),
+            "--output",
+            str(output_path),
+            "--prim-path",
+            "/World/Props",
+            "--prim-path",
+            "/World/Hero",
+            "--json",
+        ]
+    )
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert captured_settings[0].prim_paths == ("/World/Props", "/World/Hero")
+    assert payload["success"] is True
+    assert payload["prim_paths"] == ["/World/Props"]
+
+
+def test_doctor_and_list_presets_support_json(monkeypatch, capsys) -> None:
+    import json
+
+    from usd_optimize_app.models import EnvironmentStatus
+
+    monkeypatch.setattr(
+        "usd_optimize_app.cli.check_environment",
+        lambda: EnvironmentStatus(
+            runtime_root=Path("runtime"),
+            required_python=None,
+            current_python="3.12",
+            has_python_dir=True,
+            has_usdpy_dir=True,
+            has_lib_dir=True,
+            has_extra_libs_dir=True,
+            pxr_import_ok=True,
+            usd_optimize_import_ok=True,
+            operation_count=50,
+            errors=(),
+        ),
+    )
+
+    assert main(["doctor", "--json"]) == 0
+    doctor_payload = json.loads(capsys.readouterr().out)
+    assert doctor_payload["is_usable"] is True
+    assert doctor_payload["operation_count"] == 50
+
+    assert main(["list-presets", "--json"]) == 0
+    presets_payload = json.loads(capsys.readouterr().out)
+    assert any(preset["name"] == "safe_publish" for preset in presets_payload)
+
+
+def test_batch_command_supports_json(monkeypatch, capsys, tmp_path: Path) -> None:
+    import json
+
+    def fake_run_batch_jobs(inputs, output_dir, preset_name, *, force):
+        return [
+            OptimizeResult(
+                input_path=inputs[0],
+                output_path=output_dir / "asset.optimized.usda",
+                preset_name=preset_name,
+                success=True,
+                duration_seconds=0.2,
+                operations=["computeExtents"],
+            )
+        ]
+
+    monkeypatch.setattr("usd_optimize_app.cli.run_batch_jobs", fake_run_batch_jobs)
+
+    exit_code = main(
+        [
+            "batch",
+            "--input",
+            str(tmp_path / "asset.usda"),
+            "--output-dir",
+            str(tmp_path / "out"),
+            "--json",
+        ]
+    )
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert len(payload) == 1
+    assert payload[0]["preset_name"] == "safe_publish"

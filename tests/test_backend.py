@@ -224,3 +224,21 @@ def test_diagnostic_batch_ignores_output_collisions(monkeypatch, tmp_path: Path)
     run_batch_jobs((input_path,), None, "diagnostics")
 
     assert captured_settings[0].write_output is False
+
+
+def test_build_optimize_request_uses_diagnostic_report_path_when_output_omitted(
+    tmp_path: Path,
+) -> None:
+    input_path = tmp_path / "asset.usda"
+    input_path.write_text("#usda 1.0\n", encoding="utf-8")
+
+    request = build_optimize_request(
+        OptimizeJobSettings(
+            input_path=input_path,
+            output_path=None,
+            preset_name="find_overlaps",
+            write_output=False,
+        )
+    )
+
+    assert request.report_path == (tmp_path / "asset.find_overlaps.report.json").resolve()

@@ -37,8 +37,11 @@ In PowerShell, use `.\usdopt.cmd` from the extracted portable folder (or `uv run
 # Optimize a single USD stage (defaults to --preset safe_publish; use --dry-run to validate only)
 .\usdopt.cmd optimize --input "C:\path\asset.usda" --output "C:\path\asset.opt.usda" --force
 
-# Run a read-only overlap check and write a JSON report
-.\usdopt.cmd optimize --input "C:\path\asset.usda" --preset find_overlaps
+# Scope optimization or analysis to specific prim hierarchies
+.\usdopt.cmd optimize --input "C:\path\asset.usda" --prim-path /World/Props --prim-path /World/Hero
+
+# Run a read-only overlap check and write a JSON report (supports --json for stdout output)
+.\usdopt.cmd optimize --input "C:\path\asset.usda" --preset find_overlaps --json
 
 # Optimize multiple files into one directory
 .\usdopt.cmd batch --input "C:\path\a.usda" --input "C:\path\b.usda" --output-dir "C:\path\out" --preset safe_publish
@@ -52,8 +55,8 @@ In PowerShell, use `.\usdopt.cmd` from the extracted portable folder (or `uv run
 ### Reports and logs
 
 - **Write jobs** (`safe_publish`, `geometry_optimization`) write the optimized USD file, `<output>.report.json`, and `<output>.log`.
-- **Read-only jobs** (`diagnostics`, `find_overlaps`) and `--dry-run` jobs write `<output>.report.json` only (no USD derivative or `.log` file is written).
-- **Inspection commands** (`doctor`, `list-presets`, `show-preset`, `list-ops`, `report-summary`) print to stdout without writing report or log files.
+- **Read-only jobs** (`diagnostics`, `find_overlaps`) and `--dry-run` jobs write `<input_stem>.<preset>.report.json` (when `--output` is omitted for read-only presets) or `<output>.report.json` only (no USD derivative or `.log` file is written).
+- **Inspection commands** (`doctor`, `list-presets`, `show-preset`, `list-ops`, `report-summary`) print to stdout without writing report or log files. Pass `--json` to `doctor`, `list-presets`, `optimize`, `batch`, or `report-summary` for machine-readable output.
 
 Each `<output>.report.json` records the normalized `prim_paths` (empty for whole-stage runs), executed `operations`, structured `operation_results`, duration, and warnings.
 
