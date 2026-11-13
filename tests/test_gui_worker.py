@@ -81,6 +81,45 @@ def test_optimize_thread_executes_a_prebuilt_normalized_request(
     assert "Scope: 1 selected prim root(s) and descendants.\n" in output_messages
 
 
+def test_optimize_thread_skips_redundant_log_tail_after_live_streaming(
+    monkeypatch, tmp_path: Path
+) -> None:
+    input_path = tmp_path / "input.usda"
+    output_path = tmp_path / "output.usda"
+    log_path = tmp_path / "output.usda.log"
+    input_path.write_text("#usda 1.0\n", encoding="utf-8")
+    log_path.write_text("live line\n", encoding="utf-8")
+
+    def fake_run(request):
+        assert request.on_output is not None
+        request.on_output("live line\n")
+        return OptimizeResult(
+            input_path=input_path,
+            output_path=output_path,
+            preset_name="safe_publish",
+            success=True,
+            duration_seconds=0.1,
+            operations=["computeExtents"],
+            log_path=log_path,
+        )
+
+    monkeypatch.setattr(job_worker, "run_optimization", fake_run)
+    thread = OptimizeJobThread(
+        OptimizeJobSettings(
+            input_path=input_path,
+            output_path=output_path,
+            preset_name="safe_publish",
+        )
+    )
+    output_messages: list[str] = []
+    thread.output_received.connect(output_messages.append)
+
+    thread.run()
+
+    assert output_messages.count("live line\n") == 1
+    assert not any("Worker log tail" in message for message in output_messages)
+
+
 def test_read_log_tail_limits_gui_log_output(tmp_path: Path) -> None:
     log_path = tmp_path / "worker.log"
     log_path.write_text("\n".join(f"line {index}" for index in range(10)), encoding="utf-8")

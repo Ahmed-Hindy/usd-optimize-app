@@ -226,3 +226,62 @@ def test_worker_cancellation_escalates_to_kill() -> None:
         usd_runner._WORKER_TERMINATE_TIMEOUT_SECONDS,
         None,
     ]
+
+
+def test_stream_worker_output_forwards_stdout_and_stderr_incrementally() -> None:
+    import io
+
+    class StreamingProcess:
+        def __init__(self) -> None:
+            self.stdout = io.StringIO("step 1\nstep 2\n")
+            self.stderr = io.StringIO("warn line\n")
+            self.returncode = 0
+
+        def wait(self, timeout=None):
+            del timeout
+            return 0
+
+    streamed: list[str] = []
+    stdout, stderr = usd_runner._stream_worker_output(StreamingProcess(), None, streamed.append)
+
+    assert stdout == "step 1\nstep 2\n"
+    assert stderr == "warn line\n"
+    assert "step 1\n" in streamed
+    assert "step 2\n" in streamed
+    assert "[stderr] warn line\n" in streamed
+
+
+def test_stream_worker_output_cancels_process_when_signalled() -> None:
+    import io
+
+    class SlowProcess:
+        def __init__(self) -> None:
+            self.stdout = io.StringIO("")
+            self.stderr = io.StringIO("")
+            self.terminated = False
+            self.killed = False
+            self.wait_calls = 0
+
+        def wait(self, timeout=None):
+            self.wait_calls += 1
+            if self.wait_calls == 1:
+                raise subprocess.TimeoutExpired("worker", timeout)
+            if self.wait_calls == 2:
+                raise subprocess.TimeoutExpired("worker", timeout)
+            return -9
+
+        def terminate(self) -> None:
+            self.terminated = True
+
+        def kill(self) -> None:
+            self.killed = True
+
+    process = SlowProcess()
+    cancel_event = Event()
+    cancel_event.set()
+
+    with pytest.raises(OptimizeError, match="Optimization cancelled"):
+        usd_runner._stream_worker_output(process, cancel_event, lambda _line: None)
+
+    assert process.terminated is True
+    assert process.killed is True

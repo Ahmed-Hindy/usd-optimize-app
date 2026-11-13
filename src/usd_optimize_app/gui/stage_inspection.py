@@ -53,8 +53,6 @@ class StageInspectionController(QObject):
             return self._scene_result.message
         if self._diagnostics_pending:
             return "Inspecting stage diagnostics."
-        if self._diagnostics_error:
-            return f"Stage diagnostics failed: {self._diagnostics_error}"
         return None
 
     def inspect(self, input_path: Path) -> None:

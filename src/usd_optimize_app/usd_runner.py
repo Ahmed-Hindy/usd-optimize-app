@@ -8,10 +8,11 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from threading import Event
-from typing import Any
+from threading import Event, Lock, Thread
+from typing import Any, TextIO
 
 from usd_optimize_app.errors import OptimizeError
 from usd_optimize_app.models import OptimizeRequest, OptimizeResult
@@ -43,6 +44,7 @@ class WorkerJob:
     log_path: Path
     write_output: bool
     cancel_event: Event | None = None
+    on_output: Callable[[str], None] | None = None
 
 
 def run_optimization(request: OptimizeRequest) -> OptimizeResult:
@@ -114,6 +116,7 @@ def run_optimization(request: OptimizeRequest) -> OptimizeResult:
             log_path=log_path,
             write_output=request.write_output,
             cancel_event=request.cancel_event,
+            on_output=request.on_output,
         )
     )
 
@@ -158,15 +161,23 @@ def _run_worker_process(job: WorkerJob) -> WorkerExecution:
         }
         job_path.write_text(json.dumps(job_data, indent=2), encoding="utf-8")
         environment = _build_worker_environment(job.runtime_root)
-        command = [sys.executable, "-m", "usd_optimize_app.runtime_worker", "--job", str(job_path)]
+        command = [
+            sys.executable,
+            "-u",
+            "-m",
+            "usd_optimize_app.runtime_worker",
+            "--job",
+            str(job_path),
+        ]
         process = subprocess.Popen(
             command,
             env=environment,
             text=True,
+            bufsize=1,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        stdout, stderr = _communicate_worker(process, job.cancel_event)
+        stdout, stderr = _communicate_worker(process, job.cancel_event, job.on_output)
         operation_results = _read_operation_results(result_path) if process.returncode == 0 else []
 
     log_text = ""
@@ -184,21 +195,62 @@ def _run_worker_process(job: WorkerJob) -> WorkerExecution:
     return WorkerExecution(log_text, operation_results)
 
 
-def _communicate_worker(
-    process: subprocess.Popen[str], cancel_event: Event | None
+def _stream_worker_output(
+    process: subprocess.Popen[str],
+    cancel_event: Event | None,
+    on_output: Callable[[str], None],
 ) -> tuple[str, str]:
-    """Drain worker output while periodically checking for cancellation.
+    """Drain worker pipes line-by-line while forwarding output and checking cancellation."""
+    stdout_chunks: list[str] = []
+    stderr_chunks: list[str] = []
+    emit_lock = Lock()
 
-    Args:
-        process: Running worker subprocess with captured text streams.
-        cancel_event: Optional cancellation signal shared with the GUI thread.
+    def drain_stream(stream: TextIO, chunks: list[str], prefix: str = "") -> None:
+        try:
+            for line in stream:
+                chunks.append(line)
+                with emit_lock:
+                    on_output(f"{prefix}{line}" if prefix else line)
+        finally:
+            stream.close()
 
-    Returns:
-        Captured stdout and stderr text.
+    stdout_thread = Thread(target=drain_stream, args=(process.stdout, stdout_chunks), daemon=True)
+    stderr_thread = Thread(
+        target=drain_stream, args=(process.stderr, stderr_chunks, "[stderr] "), daemon=True
+    )
+    stdout_thread.start()
+    stderr_thread.start()
 
-    Raises:
-        OptimizeError: If cancellation is requested.
-    """
+    try:
+        while True:
+            try:
+                process.wait(timeout=_WORKER_POLL_INTERVAL_SECONDS)
+                break
+            except subprocess.TimeoutExpired:
+                if cancel_event is None or not cancel_event.is_set():
+                    continue
+                process.terminate()
+                try:
+                    process.wait(timeout=_WORKER_TERMINATE_TIMEOUT_SECONDS)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait()
+                raise OptimizeError("Optimization cancelled.") from None
+    finally:
+        stdout_thread.join(timeout=1.0)
+        stderr_thread.join(timeout=1.0)
+
+    return "".join(stdout_chunks), "".join(stderr_chunks)
+
+
+def _communicate_worker(
+    process: subprocess.Popen[str],
+    cancel_event: Event | None,
+    on_output: Callable[[str], None] | None = None,
+) -> tuple[str, str]:
+    """Drain worker output while periodically checking for cancellation."""
+    if on_output is not None:
+        return _stream_worker_output(process, cancel_event, on_output)
     while True:
         try:
             return process.communicate(timeout=_WORKER_POLL_INTERVAL_SECONDS)

@@ -35,14 +35,22 @@ class OptimizeJobThread(QThread):
     def __init__(self, settings: OptimizeJobSettings) -> None:
         super().__init__()
         self._cancel_event = Event()
-        self._settings = replace(settings, cancel_event=self._cancel_event)
+        self._streamed_output = False
+        self._settings = replace(
+            settings, cancel_event=self._cancel_event, on_output=self._on_worker_output
+        )
 
     def cancel(self) -> None:
         """Request cancellation of the worker subprocess at its next poll."""
         self._cancel_event.set()
 
+    def _on_worker_output(self, text: str) -> None:
+        self._streamed_output = True
+        self.output_received.emit(text)
+
     def run(self) -> None:
         """Run the optimization job and emit the result."""
+        self._streamed_output = False
         try:
             self.output_received.emit("Starting optimization...\n")
             request = build_optimize_request(self._settings)
@@ -72,8 +80,9 @@ class OptimizeJobThread(QThread):
             self.output_received.emit(f"Report: {result.report_path}\n")
         if result.log_path:
             self.output_received.emit(f"Log: {result.log_path}\n")
-            self._emit_log_tail(result.log_path)
-        elif result.worker_output:
+            if not self._streamed_output:
+                self._emit_log_tail(result.log_path)
+        elif result.worker_output and not self._streamed_output:
             self.output_received.emit("\nWorker results:\n")
             self.output_received.emit(result.worker_output + "\n")
         if result.operation_results:

@@ -321,7 +321,10 @@ class WorkflowController(QObject):
         self._refresh_overview(preset, paths)
         if not running:
             if reason is None:
-                self._set_status("Ready to run", "success")
+                if self._inspection_controller.diagnostics_error:
+                    self._set_status("Ready to run (stage diagnostics unavailable)", "warning")
+                else:
+                    self._set_status("Ready to run", "success")
             else:
                 kind = (
                     "error"
