@@ -57,6 +57,8 @@ class OptimizeResult:
     warnings: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     prim_paths: tuple[str, ...] = ()
+    input_size_bytes: int | None = None
+    output_size_bytes: int | None = None
 
 
 @dataclass(frozen=True)

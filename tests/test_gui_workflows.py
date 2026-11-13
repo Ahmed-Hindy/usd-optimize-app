@@ -242,3 +242,141 @@ def test_shutdown_cancels_and_joins_active_job(window: MainWindow) -> None:
     assert window._controller.shutdown() is True
     assert active_job.cancelled is True
     assert active_job.wait_timeout == 5_000
+
+
+def test_write_result_updates_overview_summary_with_size_delta_and_resets_on_inspect(
+    window: MainWindow, monkeypatch, tmp_path: Path
+) -> None:
+    controller = window._controller
+    results = window._results_panel
+    result = OptimizeResult(
+        input_path=tmp_path / "input.usda",
+        output_path=tmp_path / "output.usda",
+        preset_name="safe_publish",
+        success=True,
+        duration_seconds=1.25,
+        operations=["computeExtents"],
+        warnings=["Skipped optimizeMaterials: Outside scope."],
+        input_size_bytes=2048,
+        output_size_bytes=1024,
+    )
+    monkeypatch.setattr(QMessageBox, "information", lambda *_args: None)
+
+    controller._on_job_succeeded(result)
+
+    summary_text = results.overview_result_value.text()
+    assert "Saved output.usda in 1.2s" in summary_text
+    assert "2.0 KB → 1.0 KB (-50.0%)" in summary_text
+    assert "1 warning" in summary_text
+
+    window._workflow_panel.set_input_path("")
+    controller._inspect_input()
+    assert results.overview_result_value.text() == "No workflow run yet."
+
+
+def test_diagnostics_and_failure_update_overview_summary(
+    window: MainWindow, monkeypatch, tmp_path: Path
+) -> None:
+    controller = window._controller
+    results = window._results_panel
+    diagnostic_result = OptimizeResult(
+        input_path=tmp_path / "input.usda",
+        output_path=tmp_path / "output.usda",
+        preset_name="find_overlaps",
+        success=True,
+        duration_seconds=0.4,
+        operations=["findOverlappingMeshes"],
+        worker_output="Executed findOverlappingMeshes\n",
+        operation_results=[
+            {
+                "operation": "findOverlappingMeshes",
+                "output": {"analysis": {"overlappingMeshes": []}},
+            }
+        ],
+    )
+    monkeypatch.setattr(QMessageBox, "critical", lambda *_args: None)
+
+    controller._show_diagnostics(diagnostic_result)
+    assert results.overview_result_value.text() == "Analysis complete in 0.4s"
+
+    controller._on_job_failed("Worker crashed.\nDetailed traceback")
+    assert results.overview_result_value.text() == "Failed: Worker crashed."
+
+
+def _env_status(usable: bool, runtime_root: Path | None = None) -> object:
+    from usd_optimize_app.models import EnvironmentStatus
+
+    return EnvironmentStatus(
+        runtime_root=runtime_root,
+        required_python=None,
+        current_python="3.12",
+        has_python_dir=usable,
+        has_usdpy_dir=usable,
+        has_lib_dir=usable,
+        has_extra_libs_dir=usable,
+        pxr_import_ok=usable,
+        usd_optimize_import_ok=usable,
+        operation_count=12 if usable else 0,
+        errors=() if usable else ("Runtime unavailable.",),
+    )
+
+
+def test_retry_runtime_check_unlocks_workspace_when_available(
+    qt_application, monkeypatch, tmp_path: Path
+) -> None:
+    from PySide6.QtCore import QSettings
+
+    from usd_optimize_app.gui.preferences import GuiPreferences
+
+    del qt_application
+    statuses = iter([_env_status(False), _env_status(True, tmp_path)])
+    settings = QSettings(str(tmp_path / "preferences.ini"), QSettings.Format.IniFormat)
+    custom_window = MainWindow(
+        restore_session=False,
+        preferences=GuiPreferences(settings),
+        environment_status_provider=lambda: next(statuses),
+    )
+    try:
+        assert custom_window._content_stack.currentWidget() is custom_window._runtime_blocker
+        input_path = tmp_path / "asset.usda"
+        custom_window._workflow_panel.set_input_path(str(input_path))
+        inspection_ctrl = custom_window._controller._inspection_controller
+        inspection_ctrl._on_scene_completed(
+            inspection_ctrl._request_id, InputInspection(False, "Runtime missing.")
+        )
+        inspected: list[Path] = []
+        monkeypatch.setattr(
+            custom_window._controller._inspection_controller, "inspect", inspected.append
+        )
+
+        custom_window._retry_runtime_button.click()
+
+        assert custom_window._content_stack.currentWidget() is custom_window._workspace_splitter
+        assert custom_window._workspace_splitter.isEnabled() is True
+        assert custom_window.statusBar().isHidden() is False
+        assert inspected == [input_path]
+    finally:
+        custom_window.close()
+
+
+def test_window_restores_and_persists_selected_workflow(qt_application, tmp_path: Path) -> None:
+    from PySide6.QtCore import QSettings
+
+    from usd_optimize_app.gui.preferences import GuiPreferences
+
+    del qt_application
+    settings = QSettings(str(tmp_path / "preferences.ini"), QSettings.Format.IniFormat)
+    preferences = GuiPreferences(settings)
+    preferences.save_workflow("geometry_optimization")
+    custom_window = MainWindow(
+        restore_session=True,
+        preferences=preferences,
+        environment_status_provider=lambda: _env_status(False),
+    )
+    try:
+        assert custom_window._workflow_panel.workflow_name == "geometry_optimization"
+        combo = custom_window._workflow_panel.workflow_combo
+        combo.setCurrentIndex(combo.findData("find_overlaps"))
+        assert preferences.load_workflow() == "find_overlaps"
+    finally:
+        custom_window.close()

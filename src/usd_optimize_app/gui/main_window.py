@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QMessageBox,
+    QPushButton,
     QSizePolicy,
     QSplitter,
     QStackedLayout,
@@ -61,6 +62,7 @@ class MainWindow(QMainWindow):
             show_completion=self._show_conversion_complete,
             parent=self,
         )
+        self._retry_runtime_button.clicked.connect(self._controller.refresh_environment_status)
         self._controller.status_changed.connect(self._set_status)
         self._controller.runtime_changed.connect(self._set_runtime_state)
         QShortcut(QKeySequence("Escape"), self, activated=self._controller.cancel_job)
@@ -85,6 +87,8 @@ class MainWindow(QMainWindow):
         self._runtime_blocker_detail = QLabel()
         self._runtime_blocker_detail.setObjectName("RuntimeBlockerDetail")
         self._runtime_blocker_detail.setWordWrap(True)
+        self._retry_runtime_button = QPushButton("Retry runtime check")
+        self._retry_runtime_button.setMaximumWidth(180)
         self._runtime_blocker = self._build_runtime_blocker()
         self._content_stack = QStackedLayout()
         self._content_stack.addWidget(self._workspace_splitter)
@@ -112,10 +116,11 @@ class MainWindow(QMainWindow):
         panel.setObjectName("RuntimeBlocker")
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(40, 40, 40, 40)
-        layout.setSpacing(8)
+        layout.setSpacing(12)
         layout.addStretch(1)
         layout.addWidget(self._runtime_blocker_title)
         layout.addWidget(self._runtime_blocker_detail)
+        layout.addWidget(self._retry_runtime_button, alignment=Qt.AlignmentFlag.AlignLeft)
         layout.addStretch(1)
         return panel
 

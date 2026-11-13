@@ -8,6 +8,7 @@ from PySide6.QtCore import QSettings
 
 LAST_INPUT_KEY = "paths/last_input"
 LAST_OUTPUT_KEY = "paths/last_output"
+LAST_WORKFLOW_KEY = "workflow/last_selected"
 
 
 @dataclass(frozen=True)
@@ -44,6 +45,15 @@ class GuiPreferences:
     def save_output_path(self, output_path: str) -> None:
         """Save the output path currently shown in the GUI."""
         self._settings.setValue(LAST_OUTPUT_KEY, output_path.strip())
+        self._settings.sync()
+
+    def load_workflow(self) -> str:
+        """Return the last selected workflow identifier."""
+        return _coerce_string(self._settings.value(LAST_WORKFLOW_KEY, ""))
+
+    def save_workflow(self, workflow_name: str) -> None:
+        """Save the active workflow identifier."""
+        self._settings.setValue(LAST_WORKFLOW_KEY, workflow_name.strip())
         self._settings.sync()
 
 

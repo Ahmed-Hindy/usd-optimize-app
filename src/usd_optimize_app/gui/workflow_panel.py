@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QKeySequence, QShortcut
@@ -85,6 +86,15 @@ class WorkflowPanel(QFrame):
         default_index = self.workflow_combo.findData("safe_publish")
         self.workflow_combo.setCurrentIndex(default_index if default_index >= 0 else 0)
         self.workflow_combo.blockSignals(False)
+
+    def select_workflow(self, workflow_name: str) -> None:
+        """Select a workflow by identifier if present."""
+        index = self.workflow_combo.findData(workflow_name)
+        if index < 0:
+            return
+        signals_were_blocked = self.workflow_combo.blockSignals(True)
+        self.workflow_combo.setCurrentIndex(index)
+        self.workflow_combo.blockSignals(signals_were_blocked)
 
     def set_input_path(self, path: str) -> None:
         """Set the visible source path without emitting a user edit."""
@@ -256,17 +266,29 @@ class WorkflowPanel(QFrame):
         QShortcut(QKeySequence("Ctrl+Return"), self, activated=self._activate_run_shortcut)
 
     def _browse_input(self) -> None:
-        file_path, _ = QFileDialog.getOpenFileName(self, "Choose USD file", "", FILE_DIALOG_FILTER)
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Choose USD file", self._initial_browse_dir(self.input_path), FILE_DIALOG_FILTER
+        )
         if file_path:
             self.input_edit.setText(file_path)
             self.input_committed.emit(False)
 
     def _browse_output(self) -> None:
+        initial_dir = self._initial_browse_dir(self.output_path) or self._initial_browse_dir(
+            self.input_path
+        )
         file_path, _ = QFileDialog.getSaveFileName(
-            self, "Choose output USD file", "", FILE_DIALOG_FILTER
+            self, "Choose output USD file", initial_dir, FILE_DIALOG_FILTER
         )
         if file_path:
             self.output_edit.setText(file_path)
+
+    @staticmethod
+    def _initial_browse_dir(path_text: str) -> str:
+        if not path_text:
+            return ""
+        path = Path(path_text).expanduser()
+        return str(path if path.is_dir() else path.parent)
 
     def _activate_run_shortcut(self) -> None:
         if not self._running:

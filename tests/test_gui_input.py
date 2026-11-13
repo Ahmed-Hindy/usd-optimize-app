@@ -140,3 +140,73 @@ def test_analysis_tab_opens_result_drill_down(window: MainWindow) -> None:
     results.show_analysis()
 
     assert results.tabs.currentWidget() is results.analysis_edit
+
+
+def test_scene_filter_filters_items_with_ancestors_and_clears_on_reload(
+    window: MainWindow, tmp_path: Path
+) -> None:
+    workflow = window._workflow_panel
+    results = window._results_panel
+    workflow.set_input_path(str(tmp_path / "asset.usda"))
+    inspection = InputInspection(
+        is_valid=True,
+        message="Stage ready",
+        root_prim_count=1,
+        prim_count=5,
+        scene_graph=(
+            SceneGraphNode(
+                name="World",
+                path="/World",
+                type_name="Xform",
+                children=(
+                    SceneGraphNode(
+                        name="Hero",
+                        path="/World/Hero",
+                        type_name="Xform",
+                        children=(
+                            SceneGraphNode(
+                                name="BodyMesh",
+                                path="/World/Hero/BodyMesh",
+                                type_name="Mesh",
+                            ),
+                        ),
+                    ),
+                    SceneGraphNode(
+                        name="Props",
+                        path="/World/Props",
+                        type_name="Xform",
+                        children=(
+                            SceneGraphNode(
+                                name="Crate",
+                                path="/World/Props/Crate",
+                                type_name="Mesh",
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    )
+    _complete_scene_inspection(window, inspection)
+
+    results.scene_filter_edit.setText("body")
+    world_item = results.scene_tree.topLevelItem(0)
+    hero_item = world_item.child(0)
+    body_item = hero_item.child(0)
+    props_item = world_item.child(1)
+    crate_item = props_item.child(0)
+
+    assert world_item.isHidden() is False
+    assert hero_item.isHidden() is False
+    assert body_item.isHidden() is False
+    assert props_item.isHidden() is True
+    assert crate_item.isHidden() is True
+
+    results.scene_filter_edit.clear()
+    assert props_item.isHidden() is False
+    assert crate_item.isHidden() is False
+
+    results.scene_filter_edit.setText("crate")
+    _complete_scene_inspection(window, inspection)
+    assert results.scene_filter_edit.text() == ""
+    assert results.scene_tree.topLevelItem(0).child(0).isHidden() is False

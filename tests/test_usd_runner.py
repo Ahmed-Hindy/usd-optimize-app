@@ -226,3 +226,63 @@ def test_worker_cancellation_escalates_to_kill() -> None:
         usd_runner._WORKER_TERMINATE_TIMEOUT_SECONDS,
         None,
     ]
+
+
+def test_run_optimization_populates_input_and_output_sizes(monkeypatch, tmp_path: Path) -> None:
+    input_path = tmp_path / "input.usda"
+    output_path = tmp_path / "output.usda"
+    input_path.write_text("0123456789", encoding="utf-8")
+    status = EnvironmentStatus(
+        runtime_root=tmp_path,
+        required_python=None,
+        current_python="3.12",
+        has_python_dir=True,
+        has_usdpy_dir=True,
+        has_lib_dir=True,
+        has_extra_libs_dir=True,
+        pxr_import_ok=True,
+        usd_optimize_import_ok=True,
+    )
+    monkeypatch.setattr("usd_optimize_app.usd_runner.check_environment", lambda: status)
+    monkeypatch.setattr("usd_optimize_app.usd_runner.configure_environment", lambda _root: tmp_path)
+
+    def fake_worker(job: WorkerJob) -> WorkerExecution:
+        if job.write_output:
+            job.output_path.write_text("1234", encoding="utf-8")
+        return WorkerExecution("ok", [])
+
+    monkeypatch.setattr("usd_optimize_app.usd_runner._run_worker_process", fake_worker)
+
+    write_result = run_optimization(
+        OptimizeRequest(
+            input_path=input_path,
+            output_path=output_path,
+            preset=load_preset("safe_publish"),
+            write_output=True,
+        )
+    )
+    assert write_result.input_size_bytes == 10
+    assert write_result.output_size_bytes == 4
+
+    readonly_result = run_optimization(
+        OptimizeRequest(
+            input_path=input_path,
+            output_path=output_path,
+            preset=load_preset("diagnostics"),
+            write_output=False,
+        )
+    )
+    assert readonly_result.input_size_bytes == 10
+    assert readonly_result.output_size_bytes is None
+
+    inplace_result = run_optimization(
+        OptimizeRequest(
+            input_path=input_path,
+            output_path=input_path,
+            preset=load_preset("safe_publish"),
+            force=True,
+            write_output=True,
+        )
+    )
+    assert inplace_result.input_size_bytes == 10
+    assert inplace_result.output_size_bytes == 4

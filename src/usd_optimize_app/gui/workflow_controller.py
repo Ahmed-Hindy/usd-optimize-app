@@ -19,6 +19,7 @@ from usd_optimize_app.backend import (
 )
 from usd_optimize_app.constants import SUPPORTED_USD_EXTENSIONS
 from usd_optimize_app.diagnostics import parse_stage_metrics, parse_stage_stats
+from usd_optimize_app.formatting import format_file_size
 from usd_optimize_app.gui.analysis_view import format_analysis_results
 from usd_optimize_app.gui.job_worker import OptimizeJobThread
 from usd_optimize_app.gui.log_view import append_log_text
@@ -76,6 +77,7 @@ class WorkflowController(QObject):
         self._setting_auto_output = False
         self._run_started_at: float | None = None
         self._job_outcome: tuple[str, str] | None = None
+        self._latest_result_summary = "No workflow run yet."
         self._elapsed_timer = QTimer(self)
         self._elapsed_timer.setInterval(1000)
         self._elapsed_timer.timeout.connect(self._update_elapsed_status)
@@ -92,6 +94,9 @@ class WorkflowController(QObject):
             [(preset.display_name, preset.name) for preset in self._presets]
         )
         if restore_session:
+            saved_workflow = self._preferences.load_workflow()
+            if saved_workflow:
+                self._workflow_panel.select_workflow(saved_workflow)
             self._load_saved_paths()
         self.refresh_environment_status()
         self._refresh_presentation()
@@ -99,10 +104,14 @@ class WorkflowController(QObject):
     def refresh_environment_status(self) -> None:
         """Read runtime status and notify the window shell."""
         status = self._environment_status_provider()
+        was_usable = self._environment_usable
         self._environment_usable = status.is_usable
         if status.is_usable:
             details = f"{status.operation_count or 0} operations available"
             self.runtime_changed.emit(True, details)
+            inspection = self._inspection_controller.scene_result
+            if not was_usable and inspection is not None and not inspection.is_valid:
+                self._inspect_input()
         else:
             first_error = status.errors[0] if status.errors else "Unknown environment problem."
             self.runtime_changed.emit(False, first_error)
@@ -140,6 +149,9 @@ class WorkflowController(QObject):
 
     def handle_workflow_changed(self) -> None:
         """Refresh presentation for a newly selected workflow."""
+        workflow_name = self._workflow_panel.workflow_name
+        if workflow_name:
+            self._preferences.save_workflow(workflow_name)
         self._refresh_presentation()
 
     def handle_scope_changed(self) -> None:
@@ -228,6 +240,7 @@ class WorkflowController(QObject):
         input_text = self._workflow_panel.input_path
         self._input_dirty = False
         self._last_inspected_input = input_text
+        self._latest_result_summary = "No workflow run yet."
         if not input_text:
             self._inspection_controller.reset()
             self._clear_scene_view("Choose an input USD to inspect its hierarchy.")
@@ -272,11 +285,13 @@ class WorkflowController(QObject):
         message = f"{input_name} · {' · '.join(details)}"
         self._results_panel.scene_summary_label.setText(message)
         self._results_panel.scene_summary_label.setToolTip(inspection.message)
+        self._results_panel.scene_filter_edit.clear()
         populate_scene_tree(self._results_panel.scene_tree, inspection.scene_graph)
 
     def _clear_scene_view(self, message: str) -> None:
         self._results_panel.scene_summary_label.setText(message)
         self._results_panel.scene_summary_label.setToolTip(message)
+        self._results_panel.scene_filter_edit.clear()
         self._results_panel.scene_tree.clear()
 
     def _clear_diagnostics_view(self, message: str) -> None:
@@ -385,6 +400,7 @@ class WorkflowController(QObject):
                 stage=stage,
                 scope=scope,
                 workflow=workflow,
+                latest_result=self._latest_result_summary,
             )
         )
 
@@ -454,6 +470,7 @@ class WorkflowController(QObject):
 
     def _start_job(self, settings: OptimizeJobSettings) -> None:
         self._results_panel.clear_log()
+        self._latest_result_summary = "Running…"
         self._active_job = OptimizeJobThread(settings)
         self._run_started_at = monotonic()
         self._job_outcome = None
@@ -475,10 +492,11 @@ class WorkflowController(QObject):
         if result.worker_output:
             self._show_diagnostics(result)
             return
+        self._latest_result_summary = self._format_write_result_summary(result)
         self._job_outcome = ("Optimized copy completed", "success")
-        self._show_completion(result)
         self._results_panel.show_overview(expand=True)
         self._refresh_presentation()
+        self._show_completion(result)
 
     def _show_diagnostics(self, result: OptimizeResult) -> None:
         stats = parse_stage_stats(result.worker_output)
@@ -494,6 +512,7 @@ class WorkflowController(QObject):
             completion_message = "Diagnostics complete"
         else:
             completion_message = "Workflow complete"
+        self._latest_result_summary = f"{completion_message} in {result.duration_seconds:.1f}s"
         self._job_outcome = (completion_message, "success")
         self._refresh_presentation()
         self._results_panel.show_overview(expand=True)
@@ -501,14 +520,33 @@ class WorkflowController(QObject):
     def _on_job_failed(self, message: str) -> None:
         if message == "Optimization cancelled.":
             append_log_text(self._results_panel.log_edit, "\nCancelled.\n")
+            self._latest_result_summary = "Cancelled."
             self._job_outcome = ("Workflow cancelled", "warning")
         else:
             append_log_text(self._results_panel.log_edit, f"\nFailed: {message}\n")
+            first_line = message.partition("\n")[0] or "Unknown error"
+            self._latest_result_summary = f"Failed: {first_line}"
             self._job_outcome = ("Workflow failed", "error")
             self._show_error(message)
         self._refresh_presentation()
         self._set_status(*self._job_outcome)
         self._results_panel.show_overview(expand=True)
+
+    @staticmethod
+    def _format_write_result_summary(result: OptimizeResult) -> str:
+        parts = [f"Saved {result.output_path.name} in {result.duration_seconds:.1f}s"]
+        if result.input_size_bytes is not None and result.output_size_bytes is not None:
+            before = format_file_size(result.input_size_bytes)
+            after = format_file_size(result.output_size_bytes)
+            delta = ""
+            if result.input_size_bytes > 0:
+                pct = (result.output_size_bytes - result.input_size_bytes) / result.input_size_bytes
+                delta = f" ({pct * 100:+.1f}%)"
+            parts.append(f"{before} → {after}{delta}")
+        if result.warnings:
+            warning_label = "warning" if len(result.warnings) == 1 else "warnings"
+            parts.append(f"{len(result.warnings)} {warning_label}")
+        return " · ".join(parts)
 
     def _on_thread_finished(self) -> None:
         self._elapsed_timer.stop()
